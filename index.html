@@ -79,7 +79,7 @@
     <button id="nextBtn">Dalej →</button>
   </div>
 </div>
-
+  <button id="finishBtn" class="success" style="margin-top:12px">Zakończ i pokaż podsumowanie</button>
 <!-- Podsumowanie -->
 <div id="summaryScreen" class="card" style="display:none">
   <h2 style="margin-top:0;font-size:18px">Podsumowanie</h2>
@@ -206,8 +206,8 @@ async function showStep(index) {
   currentStep = index;
   const step = STEPS[index];
 
-  $('stepCounter').textContent = `Krok ${index + 1} z ${STEPS.length}`;
-  $('stepName').textContent = `${step.medium} — ${displayFlat(step.flat)}`;
+const allReadings = await getAllReadings();
+$('stepCounter').textContent = `Krok ${index + 1} z ${STEPS.length} · wypełniono ${allReadings.length}`;  $('stepName').textContent = `${step.medium} — ${displayFlat(step.flat)}`;
   $('progressFill').style.width = ((index) / STEPS.length * 100) + '%';
 
   const key = `${sessionDate}|${step.medium}|${step.flat}`;
@@ -224,6 +224,30 @@ async function showStep(index) {
 
   $('reading').focus();
   $('reading').select();
+}
+async function saveCurrentOnly() {
+  const step = STEPS[currentStep];
+  const key = `${sessionDate}|${step.medium}|${step.flat}`;
+  const existing = await findBySessionKey(key);
+  const raw = $('reading').value.trim();
+  const noteVal = $('note').value.trim();
+
+  if (raw === '') {
+    if (existing) await deleteReading(existing.id);
+    return;
+  }
+  const reading = parseNumber(raw);
+  if (reading == null) return;
+  await putReading({
+    id: existing ? existing.id : undefined,
+    sessionKey: key,
+    date: sessionDate,
+    medium: step.medium,
+    flat: step.flat,
+    reading,
+    note: noteVal,
+    createdAt: new Date().toISOString()
+  });
 }
 
 async function saveCurrentAndAdvance(skip) {
@@ -301,7 +325,10 @@ $('startBtn').addEventListener('click', async () => {
 $('nextBtn').addEventListener('click', () => saveCurrentAndAdvance(false));
 $('skipBtn').addEventListener('click', () => saveCurrentAndAdvance(true));
 $('backBtn').addEventListener('click', () => showStep(currentStep - 1));
-
+$('finishBtn').addEventListener('click', async () => {
+  await saveCurrentOnly();
+  await finishWizard();
+});
 $('reading').addEventListener('keydown', (e) => {
   if (e.key === 'Enter') { e.preventDefault(); saveCurrentAndAdvance(false); }
 });
