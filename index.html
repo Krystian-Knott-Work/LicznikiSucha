@@ -1,0 +1,353 @@
+<!DOCTYPE html>
+<html lang="pl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<meta name="apple-mobile-web-app-title" content="Liczniki">
+<link rel="manifest" href="manifest.json">
+<link rel="icon" href="icons/icon-192.png" type="image/png">
+<link rel="apple-touch-icon" href="icons/icon-192.png">
+<title>Liczniki Sucha</title>
+<style>
+  * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+  body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+         margin: 0; padding: 16px; background: #f2f2f7; color: #1c1c1e; padding-bottom: 100px; }
+  h1 { font-size: 22px; margin: 0 0 16px; }
+  .card { background: #fff; border-radius: 12px; padding: 16px; margin-bottom: 16px;
+          box-shadow: 0 1px 3px rgba(0,0,0,0.08); }
+  label { display: block; font-size: 14px; color: #666; margin-bottom: 6px; }
+  select, input[type="number"], input[type="date"], input[type="text"] {
+    width: 100%; padding: 12px; font-size: 17px; border: 1px solid #d1d1d6;
+    border-radius: 8px; background: #fff; margin-bottom: 12px; appearance: none; }
+  button { width: 100%; padding: 14px; font-size: 17px; font-weight: 600;
+           border: none; border-radius: 10px; background: #007aff; color: #fff;
+           margin-bottom: 10px; cursor: pointer; }
+  button:active { opacity: 0.7; }
+  button:disabled { background: #b0b0b5; cursor: not-allowed; }
+  button.secondary { background: #e5e5ea; color: #1c1c1e; }
+  button.success { background: #34c759; }
+  button.danger { background: #ff3b30; }
+  .entry { display: flex; justify-content: space-between; align-items: center;
+           padding: 10px 0; border-bottom: 1px solid #f2f2f7; font-size: 15px; }
+  .entry:last-child { border-bottom: none; }
+  .entry .meta { color: #8e8e93; font-size: 13px; }
+  .entry .del { background: none; color: #ff3b30; border: none; font-size: 20px;
+                width: auto; padding: 0 8px; margin: 0; cursor: pointer; }
+  .empty { color: #8e8e93; text-align: center; padding: 20px 0; font-size: 15px; }
+  .hint { font-size: 13px; color: #8e8e93; margin-top: -6px; margin-bottom: 12px; }
+  .badge { display: inline-block; font-size: 11px; padding: 2px 8px; border-radius: 10px;
+           background: #e5e5ea; color: #1c1c1e; margin-left: 6px; vertical-align: middle; }
+</style>
+</head>
+<body>
+
+<h1>Liczniki Sucha</h1>
+
+<div class="card">
+  <label for="flat">Mieszkanie</label>
+  <select id="flat">
+    <option value="1">Mieszkanie 1</option>
+    <option value="2">Mieszkanie 2</option>
+    <option value="3">Mieszkanie 3</option>
+    <option value="4">Mieszkanie 4</option>
+  </select>
+
+  <label for="date">Data odczytu</label>
+  <input type="date" id="date">
+
+  <label for="power">Prąd (kWh)</label>
+  <input type="number" id="power" inputmode="decimal" step="0.01" placeholder="np. 12345.67">
+
+  <label for="waterCold">Woda zimna (m³)</label>
+  <input type="number" id="waterCold" inputmode="decimal" step="0.001" placeholder="np. 123.456">
+
+  <label for="waterHot">Woda ciepła (m³)</label>
+  <input type="number" id="waterHot" inputmode="decimal" step="0.001" placeholder="np. 45.678">
+
+  <label for="note">Notatka (opcjonalnie)</label>
+  <input type="text" id="note" placeholder="np. stan z końca miesiąca">
+
+  <button id="save">Zapisz odczyt</button>
+</div>
+
+<div class="card">
+  <h2 style="font-size:17px;margin:0 0 12px;">Zapisane odczyty <span class="badge" id="countBadge">0</span></h2>
+  <div id="list"></div>
+</div>
+
+<div class="card">
+  <button class="success" id="sendToSheets">Wyślij do arkusza Google</button>
+  <button class="secondary" id="export">Eksportuj do CSV</button>
+  <button class="danger" id="clearAll">Usuń wszystkie dane</button>
+  <div class="hint">Dane są przechowywane lokalnie w przeglądarce. Rób regularnie kopie (CSV).</div>
+</div>
+
+<script>
+const APPS_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbxCkiHpB8a34KM-in77mXN4UCB34Png_ZiWYq_2GWFlEhlks5qWv9HTCzP9vcB82fkNJg/exec';
+const DB_NAME = 'licznikiDB';
+const DB_VERSION = 1;
+const STORE = 'readings';
+const FLATS = ['1', '2', '3', '4'];
+let db;
+
+function openDB() {
+  return new Promise((resolve, reject) => {
+    const req = indexedDB.open(DB_NAME, DB_VERSION);
+    req.onupgradeneeded = (e) => {
+      const d = e.target.result;
+      if (!d.objectStoreNames.contains(STORE)) {
+        const store = d.createObjectStore(STORE, { keyPath: 'id', autoIncrement: true });
+        store.createIndex('flat', 'flat');
+        store.createIndex('date', 'date');
+      }
+    };
+    req.onsuccess = (e) => { db = e.target.result; resolve(db); };
+    req.onerror = (e) => reject(e.target.error);
+  });
+}
+
+function addReading(reading) {
+  return new Promise((resolve, reject) => {
+    const tx = db.transaction(STORE, 'readwrite');
+    tx.objectStore(STORE).add(reading);
+    tx.oncomplete = () => resolve();
+    tx.onerror = (e) => reject(e.target.error);
+  });
+}
+
+function getAllReadings() {
+  return new Promise((resolve, reject) => {
+    const tx = db.transaction(STORE, 'readonly');
+    const req = tx.objectStore(STORE).getAll();
+    req.onsuccess = () => resolve(req.result);
+    req.onerror = (e) => reject(e.target.error);
+  });
+}
+
+function deleteReading(id) {
+  return new Promise((resolve, reject) => {
+    const tx = db.transaction(STORE, 'readwrite');
+    tx.objectStore(STORE).delete(id);
+    tx.oncomplete = () => resolve();
+    tx.onerror = (e) => reject(e.target.error);
+  });
+}
+
+function clearAll() {
+  return new Promise((resolve, reject) => {
+    const tx = db.transaction(STORE, 'readwrite');
+    tx.objectStore(STORE).clear();
+    tx.oncomplete = () => resolve();
+    tx.onerror = (e) => reject(e.target.error);
+  });
+}
+
+function todayISO() {
+  const d = new Date();
+  const off = d.getTimezoneOffset();
+  const local = new Date(d.getTime() - off * 60000);
+  return local.toISOString().slice(0, 10);
+}
+
+function formatDate(iso) {
+  const [y, m, d] = iso.split('-');
+  return `${d}.${m}.${y}`;
+}
+
+function nextFlat(current) {
+  const idx = FLATS.indexOf(current);
+  return FLATS[(idx + 1) % FLATS.length];
+}
+
+function showToast(text) {
+  let toast = document.getElementById('toast');
+  if (!toast) {
+    toast = document.createElement('div');
+    toast.id = 'toast';
+    toast.style.cssText = `
+      position: fixed; left: 50%; bottom: 90px; transform: translateX(-50%);
+      background: #1c1c1e; color: #fff; padding: 10px 18px; border-radius: 20px;
+      font-size: 15px; opacity: 0; transition: opacity 0.25s; pointer-events: none;
+      z-index: 999; white-space: nowrap;
+    `;
+    document.body.appendChild(toast);
+  }
+  toast.textContent = text;
+  toast.style.opacity = '1';
+  clearTimeout(toast._t);
+  toast._t = setTimeout(() => { toast.style.opacity = '0'; }, 1600);
+}
+
+function escapeHtml(s) {
+  return String(s).replace(/[&<>"']/g, c => ({
+    '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;'
+  }[c]));
+}
+
+function parseNumber(val) {
+  if (val === '' || val == null) return null;
+  const n = parseFloat(String(val).replace(',', '.'));
+  return isNaN(n) ? null : n;
+}
+
+async function renderList() {
+  const list = document.getElementById('list');
+  const readings = await getAllReadings();
+  document.getElementById('countBadge').textContent = readings.length;
+  readings.sort((a, b) => (b.date || '').localeCompare(a.date || '') || b.id - a.id);
+
+  if (readings.length === 0) {
+    list.innerHTML = '<div class="empty">Brak zapisanych odczytów.</div>';
+    return;
+  }
+
+  list.innerHTML = readings.map(r => `
+    <div class="entry">
+      <div>
+        <div><strong>Mieszk. ${r.flat}</strong> — ${formatDate(r.date)}</div>
+        <div class="meta">
+          Prąd: ${r.power != null ? r.power + ' kWh' : '—'} ·
+          W. zimna: ${r.waterCold != null ? r.waterCold + ' m³' : '—'} ·
+          W. ciepła: ${r.waterHot != null ? r.waterHot + ' m³' : '—'}
+          ${r.note ? ' · ' + escapeHtml(r.note) : ''}
+        </div>
+      </div>
+      <button class="del" data-id="${r.id}" aria-label="Usuń">✕</button>
+    </div>
+  `).join('');
+
+  list.querySelectorAll('.del').forEach(btn => {
+    btn.addEventListener('click', async () => {
+      if (confirm('Usunąć ten odczyt?')) {
+        await deleteReading(Number(btn.dataset.id));
+        await renderList();
+      }
+    });
+  });
+}
+
+document.getElementById('save').addEventListener('click', async () => {
+  const flatSelect = document.getElementById('flat');
+  const flat = flatSelect.value;
+  const date = document.getElementById('date').value;
+  const power = parseNumber(document.getElementById('power').value);
+  const waterCold = parseNumber(document.getElementById('waterCold').value);
+  const waterHot = parseNumber(document.getElementById('waterHot').value);
+  const note = document.getElementById('note').value.trim();
+
+  if (!date) { alert('Wybierz datę odczytu.'); return; }
+  if (power == null && waterCold == null && waterHot == null) {
+    alert('Wpisz przynajmniej jeden odczyt.');
+    return;
+  }
+
+  await addReading({ flat, date, power, waterCold, waterHot, note, createdAt: new Date().toISOString() });
+  showToast(`Zapisano: Mieszkanie ${flat}`);
+
+  document.getElementById('power').value = '';
+  document.getElementById('waterCold').value = '';
+  document.getElementById('waterHot').value = '';
+  document.getElementById('note').value = '';
+  flatSelect.value = nextFlat(flat);
+  document.getElementById('power').focus();
+  await renderList();
+});
+
+document.getElementById('sendToSheets').addEventListener('click', async () => {
+  if (APPS_SCRIPT_URL.indexOf('WKLEJ_TUTAJ') === 0) {
+    alert('Najpierw wklej URL Apps Script do zmiennej APPS_SCRIPT_URL w kodzie.');
+    return;
+  }
+
+  const readings = await getAllReadings();
+  if (readings.length === 0) { alert('Brak danych do wysłania.'); return; }
+
+  readings.sort((a, b) => (a.date || '').localeCompare(b.date || '') || a.id - b.id);
+
+  const header = ['Mieszkanie', 'Data', 'Prad_kWh', 'WodaZimna_m3', 'WodaCiepla_m3', 'Notatka'];
+  const rows = readings.map(r => [
+    r.flat, formatDate(r.date),
+    r.power != null ? String(r.power) : '',
+    r.waterCold != null ? String(r.waterCold) : '',
+    r.waterHot != null ? String(r.waterHot) : '',
+    r.note ? r.note.replace(/"/g, '""') : ''
+  ]);
+  const csv = [header.join(','), ...rows.map(r => r.join(','))].join('\r\n');
+
+  const btn = document.getElementById('sendToSheets');
+  btn.disabled = true;
+  btn.textContent = 'Wysyłam...';
+
+  try {
+    const resp = await fetch(APPS_SCRIPT_URL, {
+      method: 'POST',
+      headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+      body: csv
+    });
+    const text = await resp.text();
+    if (text.indexOf('OK') === 0) {
+      alert(`Wysłano ${readings.length} odczytów do arkusza Google.`);
+    } else {
+      alert('Serwer odpowiedział: ' + text);
+    }
+  } catch (err) {
+    alert('Błąd wysyłki: ' + err.message);
+  } finally {
+    btn.disabled = false;
+    btn.textContent = 'Wyślij do arkusza Google';
+  }
+});
+
+document.getElementById('export').addEventListener('click', async () => {
+  const readings = await getAllReadings();
+  if (readings.length === 0) { alert('Brak danych do eksportu.'); return; }
+
+  readings.sort((a, b) => (a.date || '').localeCompare(b.date || '') || a.id - b.id);
+
+  const header = ['Mieszkanie', 'Data', 'Prad_kWh', 'WodaZimna_m3', 'WodaCiepla_m3', 'Notatka'];
+  const rows = readings.map(r => [
+    r.flat, r.date,
+    r.power != null ? String(r.power) : '',
+    r.waterCold != null ? String(r.waterCold) : '',
+    r.waterHot != null ? String(r.waterHot) : '',
+    r.note ? '"' + r.note.replace(/"/g, '""') + '"' : ''
+  ]);
+
+  const csv = [header.join(','), ...rows.map(r => r.join(','))].join('\r\n');
+  const blob = new Blob(['\ufeff' + csv], { type: 'text/csv;charset=utf-8;' });
+  const url = URL.createObjectURL(blob);
+
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = `liczniki_${todayISO()}.csv`;
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  setTimeout(() => URL.revokeObjectURL(url), 1000);
+});
+
+document.getElementById('clearAll').addEventListener('click', async () => {
+  if (confirm('Usunąć WSZYSTKIE zapisane odczyty? Tego nie można cofnąć.')) {
+    await clearAll();
+    await renderList();
+  }
+});
+
+if ('serviceWorker' in navigator) {
+  navigator.serviceWorker.register('sw.js').then(() => {
+    console.log('Service Worker zarejestrowany');
+  }).catch((err) => {
+    console.warn('Service Worker błąd:', err);
+  });
+}
+
+(async function init() {
+  document.getElementById('date').value = todayISO();
+  await openDB();
+  await renderList();
+})();
+</script>
+</body>
+</html>
