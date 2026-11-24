@@ -1,5 +1,3 @@
-Plik: index.html
-
 <!DOCTYPE html>
 <html lang="pl">
 <head>
@@ -580,4 +578,16 @@ $('exportBtn').addEventListener('click', async () => {
 // ---------- Init ----------
 
 if ('serviceWorker' in navigator) {
-  navigator.serviceWorker.register('
+  navigator.serviceWorker.register('sw.js').then(() => {
+    console.log('Service Worker zarejestrowany');
+  }).catch((err) => console.warn('SW błąd:', err));
+}
+
+(async function init() {
+  $('date').value = todayISO();
+  await openDB();
+  await updateGlobalSendLabel();
+})();
+</script>
+</body>
+</html>
