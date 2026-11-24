@@ -313,7 +313,8 @@ async function globalSend() {
       await clearAll();
       await updateGlobalSendLabel();
       showSetupScreen();
-      alert(`Wysłano ${readings.length} odczytów do arkusza Google.\nDane wyczyszczone z telefonu.`);
+      const info = text.replace(/^OK\s*/, '').trim();
+      alert(`Wysłano ${readings.length} odczytów do arkusza Google.\nDane wyczyszczone z telefonu.` + (info ? `\n\n${info}` : ''));
     } else {
       alert('Serwer odpowiedział: ' + text + '\nDane NIE zostały wysłane. Spróbuj ponownie.');
     }
