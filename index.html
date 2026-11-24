@@ -1,3 +1,5 @@
+Plik: index.html
+
 <!DOCTYPE html>
 <html lang="pl">
 <head>
@@ -36,8 +38,6 @@
   .step-counter { font-size: 12px; color: #8e8e93; text-transform: uppercase;
                   letter-spacing: 0.5px; margin-bottom: 4px; }
   .step-name { font-size: 26px; font-weight: 700; margin-bottom: 14px; }
-
-  /* Siatka odczytów: etykieta mieszkania + 1 lub 2 inputy w wierszu */
   .meter-row { display: grid; grid-template-columns: 48px repeat(var(--cols, 1), 1fr);
                gap: 10px; align-items: center; margin-bottom: 10px; }
   .meter-row.head { margin-bottom: 6px; }
@@ -50,7 +50,6 @@
   .meter-row .span-all { grid-column: 2 / -1; }
   .extra-sep { border-top: 1px solid #f2f2f7; margin: 14px 0 12px; padding-top: 12px; }
   .extra-sep .hint { margin: 0 0 8px; }
-
   .row-buttons { display: flex; gap: 8px; margin-top: 14px; }
   .row-buttons > button { flex: 1; margin-bottom: 0; }
   .summary-group { margin-bottom: 20px; }
@@ -73,7 +72,6 @@
 
 <h1>Liczniki Sucha</h1>
 
-<!-- Ekran startowy -->
 <div id="setupScreen" class="card">
   <label for="date">Data odczytu</label>
   <input type="date" id="date">
@@ -82,14 +80,11 @@
   <div class="hint">Ekran 1: Prąd M1–M5 → Ekran 2: Woda zimna i gorąca M1–M5 + Gaz</div>
 </div>
 
-<!-- Ekrany odczytów (1: prąd, 2: woda i gaz) -->
 <div id="wizardScreen" class="card" style="display:none">
   <div class="progress-bar"><div id="progressFill" style="width:0%"></div></div>
   <div class="step-counter" id="stepCounter"></div>
   <div class="step-name" id="stepName"></div>
-
   <div id="pageBody"></div>
-
   <div class="row-buttons">
     <button id="backBtn" class="secondary">← Wstecz</button>
     <button id="nextBtn">Dalej →</button>
@@ -97,17 +92,14 @@
   <button id="finishBtn" class="success" style="margin-top:12px">Zakończ i pokaż podsumowanie</button>
 </div>
 
-<!-- Podsumowanie -->
 <div id="summaryScreen" class="card" style="display:none">
   <h2 style="margin-top:0;font-size:18px">Podsumowanie</h2>
   <div id="summaryList"></div>
-
   <button id="exportBtn" class="secondary">Eksport CSV</button>
   <button id="editBtn" class="secondary">Wróć do edycji</button>
   <button id="newSessionBtn" class="danger">Nowa sesja (wyczyść)</button>
 </div>
 
-<!-- Stały pasek wysyłki -->
 <div class="send-bar">
   <button id="globalSendBtn" class="success">Wyślij do arkusza Google</button>
 </div>
@@ -116,11 +108,8 @@
 const APPS_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbzi2Jw5W_4rXo-QTBV5f7PSMbw5dPeez5dxBbF7hiJiBXJ_Eihu_zqcpPopWxfw3517/exec';
 
 const FLATS = ['1', '2', '3', '4', '5'];
-
-// Kolejność mediów (używana do sortowania w podsumowaniu i wysyłce)
 const MEDIA_ORDER = ['Prąd', 'Zimna woda', 'Gorąca woda', 'Gaz'];
 
-// Definicja ekranów
 const PAGES = [
   {
     title: 'Prąd',
@@ -137,7 +126,7 @@ const PAGES = [
     rows: FLATS.map(f => ({
       label: 'M' + f,
       fields: [
-        { medium: 'Zimna woda',  flat: f },
+        { medium: 'Zimna woda', flat: f },
         { medium: 'Gorąca woda', flat: f }
       ]
     })),
@@ -156,7 +145,7 @@ const STORE = 'readings';
 let db;
 let currentPage = 0;
 let sessionDate = '';
-let saveQueue = Promise.resolve();   // zapisy idą po kolei, żeby nie dublować rekordów
+let saveQueue = Promise.resolve();
 
 const $ = id => document.getElementById(id);
 
@@ -233,10 +222,22 @@ function formatDate(iso) {
   return `${d}.${m}.${y}`;
 }
 
+// Parsowanie liczb: przecinek i kropka, maksymalnie 3 miejsca po przecinku.
 function parseNumber(val) {
   if (val === '' || val == null) return null;
-  const n = parseFloat(String(val).replace(',', '.'));
-  return isNaN(n) ? null : n;
+
+  const normalized = String(val).trim().replace(',', '.');
+
+  if (!/^\d+(\.\d{0,3})?$/.test(normalized)) return null;
+
+  const n = Number(normalized);
+  return Number.isFinite(n) ? n : null;
+}
+
+// Wyświetlanie zawsze 3 miejsc po przecinku.
+function formatReading(value) {
+  if (value === '' || value == null) return '';
+  return Number(value).toFixed(3).replace('.', ',');
 }
 
 function displayFlat(flat) {
@@ -254,8 +255,6 @@ function fieldKey(f) {
   return `${sessionDate}|${f.medium}|${f.flat}`;
 }
 
-// ---------- Pasek wysyłki ----------
-
 async function updateGlobalSendLabel() {
   const readings = await getAllReadings();
   const btn = $('globalSendBtn');
@@ -272,14 +271,17 @@ function showSetupScreen() {
 
 async function globalSend() {
   if (APPS_SCRIPT_URL.indexOf('WKLEJ_TUTAJ') === 0) {
-    alert('Brak URL Apps Script.'); return;
+    alert('Brak URL Apps Script.');
+    return;
   }
 
-  // Poczekaj aż wszystkie wpisane wartości trafią do bazy
   await saveQueue;
 
   const readings = await getAllReadings();
-  if (readings.length === 0) { alert('Brak danych do wysłania.'); return; }
+  if (readings.length === 0) {
+    alert('Brak danych do wysłania.');
+    return;
+  }
 
   if (!confirm(`Wysłać ${readings.length} odczytów do arkusza Google?\nPo wysyłce dane zostaną usunięte z telefonu (będą tylko w arkuszu).`)) {
     return;
@@ -292,9 +294,10 @@ async function globalSend() {
     r.medium,
     displayFlat(r.flat),
     formatDate(r.date),
-    r.reading != null ? String(r.reading) : '',
+    r.reading != null ? formatReading(r.reading).replace(',', '.') : '',
     r.note ? r.note.replace(/"/g, '""') : ''
   ]);
+
   const csv = [header.join(','), ...rows.map(r => r.join(','))].join('\r\n');
 
   const btn = $('globalSendBtn');
@@ -307,12 +310,14 @@ async function globalSend() {
       headers: { 'Content-Type': 'text/plain;charset=utf-8' },
       body: csv
     });
+
     const text = await resp.text();
+
     if (text.indexOf('OK') === 0) {
-      // ✅ Sukces — czyścimy bazę i wracamy do startu
       await clearAll();
       await updateGlobalSendLabel();
       showSetupScreen();
+
       const info = text.replace(/^OK\s*/, '').trim();
       alert(`Wysłano ${readings.length} odczytów do arkusza Google.\nDane wyczyszczone z telefonu.` + (info ? `\n\n${info}` : ''));
     } else {
@@ -326,11 +331,16 @@ async function globalSend() {
   }
 }
 
-// ---------- Ekrany odczytów ----------
-
+// Pola tekstowe pozwalają poprawnie obsługiwać przecinek dziesiętny.
 function inputHTML(f, extraClass) {
-  return `<input type="number" class="reading-input ${extraClass || ''}" inputmode="decimal" step="any" placeholder="—"
-            data-medium="${f.medium}" data-flat="${f.flat}" aria-label="${f.medium} ${displayFlat(f.flat)}">`;
+  return `<input type="text"
+            class="reading-input ${extraClass || ''}"
+            inputmode="decimal"
+            autocomplete="off"
+            placeholder="—"
+            data-medium="${f.medium}"
+            data-flat="${f.flat}"
+            aria-label="${f.medium} ${displayFlat(f.flat)}">`;
 }
 
 function renderPage(page) {
@@ -361,12 +371,12 @@ function renderPage(page) {
 async function showPage(index) {
   if (index < 0) index = 0;
   if (index >= PAGES.length) index = PAGES.length - 1;
+
   currentPage = index;
   const page = PAGES[index];
 
   renderPage(page);
 
-  // Wczytaj już zapisane wartości dla tej daty
   const all = await getAllReadings();
   const bySession = {};
   all.forEach(r => { bySession[r.sessionKey] = r; });
@@ -374,7 +384,10 @@ async function showPage(index) {
   $('pageBody').querySelectorAll('input.reading-input').forEach(inp => {
     const f = { medium: inp.dataset.medium, flat: inp.dataset.flat };
     const existing = bySession[fieldKey(f)];
-    inp.value = existing && existing.reading != null ? existing.reading : '';
+
+    inp.value = existing && existing.reading != null
+      ? formatReading(existing.reading)
+      : '';
   });
 
   $('stepCounter').textContent = `Ekran ${index + 1} z ${PAGES.length} · wypełniono ${all.length}`;
@@ -389,10 +402,10 @@ async function showPage(index) {
   $('setupScreen').style.display = 'none';
   $('summaryScreen').style.display = 'none';
   $('wizardScreen').style.display = 'block';
+
   window.scrollTo(0, 0);
 }
 
-// Zapis pojedynczego pola (wywoływany przy każdej zmianie, szeregowo)
 function saveField(f, raw) {
   const task = async () => {
     const key = fieldKey(f);
@@ -404,6 +417,7 @@ function saveField(f, raw) {
     } else {
       const reading = parseNumber(value);
       if (reading == null) return;
+
       await putReading({
         id: existing ? existing.id : undefined,
         sessionKey: key,
@@ -415,8 +429,10 @@ function saveField(f, raw) {
         createdAt: existing ? existing.createdAt : new Date().toISOString()
       });
     }
+
     await updateGlobalSendLabel();
   };
+
   saveQueue = saveQueue.then(task).catch(err => console.warn('Błąd zapisu:', err));
   return saveQueue;
 }
@@ -448,9 +464,10 @@ async function finishWizard() {
     const items = groups[medium].map(r => `
       <div class="summary-item">
         <span>${displayFlat(r.flat)}</span>
-        <span>${r.reading != null ? r.reading : '—'}</span>
+        <span>${r.reading != null ? formatReading(r.reading) : '—'}</span>
       </div>
     `).join('');
+
     return `<div class="summary-group"><h3>${medium}</h3>${items}</div>`;
   }).join('');
 }
@@ -459,13 +476,19 @@ async function finishWizard() {
 
 $('startBtn').addEventListener('click', async () => {
   sessionDate = $('date').value;
-  if (!sessionDate) { alert('Wybierz datę.'); return; }
+  if (!sessionDate) {
+    alert('Wybierz datę.');
+    return;
+  }
   await showPage(0);
 });
 
 $('directSendBtn').addEventListener('click', async () => {
   sessionDate = $('date').value;
-  if (!sessionDate) { alert('Wybierz datę.'); return; }
+  if (!sessionDate) {
+    alert('Wybierz datę.');
+    return;
+  }
   await finishWizard();
 });
 
@@ -481,19 +504,24 @@ $('backBtn').addEventListener('click', async () => {
 
 $('finishBtn').addEventListener('click', finishWizard);
 
-// Zapis przy każdej zmianie w polu
 $('pageBody').addEventListener('input', (e) => {
   const inp = e.target;
   if (!inp.classList.contains('reading-input')) return;
-  saveField({ medium: inp.dataset.medium, flat: inp.dataset.flat }, inp.value);
+
+  saveField(
+    { medium: inp.dataset.medium, flat: inp.dataset.flat },
+    inp.value
+  );
 });
 
-// Enter = następne pole
 $('pageBody').addEventListener('keydown', (e) => {
   if (e.key !== 'Enter' || !e.target.classList.contains('reading-input')) return;
+
   e.preventDefault();
+
   const inputs = Array.from($('pageBody').querySelectorAll('input.reading-input'));
   const i = inputs.indexOf(e.target);
+
   if (i >= 0 && i < inputs.length - 1) inputs[i + 1].focus();
   else e.target.blur();
 });
@@ -502,6 +530,7 @@ $('editBtn').addEventListener('click', () => showPage(0));
 
 $('newSessionBtn').addEventListener('click', async () => {
   if (!confirm('Wyczyścić wszystkie zapisane odczyty z telefonu? (Niewysłane dane przepadną.)')) return;
+
   await saveQueue;
   await clearAll();
   await updateGlobalSendLabel();
@@ -514,40 +543,41 @@ $('globalSendBtn').addEventListener('click', globalSend);
 
 $('exportBtn').addEventListener('click', async () => {
   const readings = await getAllReadings();
-  if (readings.length === 0) { alert('Brak danych.'); return; }
+
+  if (readings.length === 0) {
+    alert('Brak danych.');
+    return;
+  }
+
   readings.sort(sortReadings);
 
   const header = ['Medium', 'Mieszkanie', 'Data', 'Odczyt', 'Notatka'];
+
   const rows = readings.map(r => [
-    r.medium, displayFlat(r.flat), r.date,
-    r.reading != null ? String(r.reading) : '',
+    r.medium,
+    displayFlat(r.flat),
+    r.date,
+    r.reading != null ? formatReading(r.reading) : '',
     r.note ? '"' + r.note.replace(/"/g, '""') + '"' : ''
   ]);
+
   const csv = [header.join(','), ...rows.map(r => r.join(','))].join('\r\n');
-  const blob = new Blob(['﻿' + csv], { type: 'text/csv;charset=utf-8;' });
+
+  const blob = new Blob(['\uFEFF' + csv], { type: 'text/csv;charset=utf-8;' });
   const url = URL.createObjectURL(blob);
   const a = document.createElement('a');
+
   a.href = url;
   a.download = `liczniki_${todayISO()}.csv`;
+
   document.body.appendChild(a);
   a.click();
   document.body.removeChild(a);
+
   setTimeout(() => URL.revokeObjectURL(url), 1000);
 });
 
 // ---------- Init ----------
 
 if ('serviceWorker' in navigator) {
-  navigator.serviceWorker.register('sw.js').then(() => {
-    console.log('Service Worker zarejestrowany');
-  }).catch((err) => console.warn('SW błąd:', err));
-}
-
-(async function init() {
-  $('date').value = todayISO();
-  await openDB();
-  await updateGlobalSendLabel();
-})();
-</script>
-</body>
-</html>
+  navigator.serviceWorker.register('
