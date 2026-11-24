@@ -65,7 +65,7 @@
   <label for="date">Data odczytu</label>
   <input type="date" id="date">
   <button id="startBtn">Rozpocznij odczyty</button>
-  <button id="directSendBtn" class="secondary">Przejdź od razu do wysyłki</button>
+  <button id="directSendBtn" class="secondary">Przejdź od razu do podsumowania</button>
   <div class="hint">Kolejno: Prąd M1–M5 → Zimna woda M1–M5 → Gorąca woda M1–M5 → Gaz</div>
 </div>
 
@@ -96,7 +96,7 @@
 
   <button id="exportBtn" class="secondary">Eksport CSV</button>
   <button id="editBtn" class="secondary">Wróć do edycji</button>
-  <button id="newSessionBtn" class="danger">Nowa sesja</button>
+  <button id="newSessionBtn" class="danger">Nowa sesja (wyczyść)</button>
 </div>
 
 <!-- Stały pasek wysyłki -->
@@ -227,6 +227,12 @@ async function updateGlobalSendLabel() {
     : `Wyślij do arkusza Google (${readings.length})`;
 }
 
+function showSetupScreen() {
+  $('wizardScreen').style.display = 'none';
+  $('summaryScreen').style.display = 'none';
+  $('setupScreen').style.display = 'block';
+}
+
 async function globalSend() {
   if (APPS_SCRIPT_URL.indexOf('WKLEJ_TUTAJ') === 0) {
     alert('Brak URL Apps Script.'); return;
@@ -238,6 +244,10 @@ async function globalSend() {
 
   const readings = await getAllReadings();
   if (readings.length === 0) { alert('Brak danych do wysłania.'); return; }
+
+  if (!confirm(`Wysłać ${readings.length} odczytów do arkusza Google?\nPo wysyłce dane zostaną usunięte z telefonu (będą tylko w arkuszu).`)) {
+    return;
+  }
 
   readings.sort(sortReadings);
 
@@ -263,12 +273,16 @@ async function globalSend() {
     });
     const text = await resp.text();
     if (text.indexOf('OK') === 0) {
-      alert(`Wysłano ${readings.length} odczytów do arkusza Google.`);
+      // ✅ Sukces — czyścimy bazę i wracamy do startu
+      await clearAll();
+      await updateGlobalSendLabel();
+      showSetupScreen();
+      alert(`Wysłano ${readings.length} odczytów do arkusza Google.\nDane wyczyszczone z telefonu.`);
     } else {
-      alert('Serwer odpowiedział: ' + text);
+      alert('Serwer odpowiedział: ' + text + '\nDane NIE zostały wysłane. Spróbuj ponownie.');
     }
   } catch (err) {
-    alert('Błąd wysyłki: ' + err.message);
+    alert('Błąd wysyłki: ' + err.message + '\nDane zostały zachowane — spróbuj ponownie.');
   } finally {
     btn.disabled = false;
     await updateGlobalSendLabel();
@@ -406,11 +420,10 @@ $('reading').addEventListener('keydown', (e) => {
 $('editBtn').addEventListener('click', () => showStep(0));
 
 $('newSessionBtn').addEventListener('click', async () => {
-  if (!confirm('Rozpocząć nową sesję? Poprzednie odczyty zostaną usunięte z pamięci telefonu (ale możesz je wcześniej wysłać/eksportować).')) return;
+  if (!confirm('Wyczyścić wszystkie zapisane odczyty z telefonu? (Niewysłane dane przepadną.)')) return;
   await clearAll();
   await updateGlobalSendLabel();
-  $('summaryScreen').style.display = 'none';
-  $('setupScreen').style.display = 'block';
+  showSetupScreen();
 });
 
 $('globalSendBtn').addEventListener('click', globalSend);
