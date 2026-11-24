@@ -1,593 +1,86 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="pl">
 <head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="theme-color" content="#101827">
 <meta name="apple-mobile-web-app-capable" content="yes">
-<meta name="apple-mobile-web-app-status-bar-style" content="default">
-<meta name="apple-mobile-web-app-title" content="Liczniki">
+<meta name="apple-mobile-web-app-title" content="Liczniki Sucha">
 <link rel="manifest" href="manifest.json">
-<link rel="icon" href="icons/icon-192.png" type="image/png">
-<link rel="apple-touch-icon" href="icons/icon-192.png">
 <title>Liczniki Sucha</title>
 <style>
-  * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
-  body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
-         margin: 0; padding: 16px; background: #f2f2f7; color: #1c1c1e; padding-bottom: 110px; }
-  h1 { font-size: 22px; margin: 0 0 16px; }
-  .card { background: #fff; border-radius: 12px; padding: 16px; margin-bottom: 16px;
-          box-shadow: 0 1px 3px rgba(0,0,0,0.08); }
-  label { display: block; font-size: 14px; color: #666; margin-bottom: 6px; }
-  input[type="number"], input[type="date"], input[type="text"] {
-    width: 100%; padding: 12px; font-size: 17px; border: 1px solid #d1d1d6;
-    border-radius: 8px; background: #fff; margin-bottom: 12px; appearance: none; }
-  button { width: 100%; padding: 14px; font-size: 17px; font-weight: 600;
-           border: none; border-radius: 10px; background: #007aff; color: #fff;
-           margin-bottom: 10px; cursor: pointer; }
-  button:active { opacity: 0.7; }
-  button:disabled { background: #c7c7cc; cursor: not-allowed; }
-  button.secondary { background: #e5e5ea; color: #1c1c1e; }
-  button.success { background: #34c759; }
-  button.danger { background: #ff3b30; }
-  .hint { font-size: 13px; color: #8e8e93; margin-top: 8px; }
-  .progress-bar { height: 6px; background: #e5e5ea; border-radius: 3px;
-                  overflow: hidden; margin-bottom: 16px; }
-  .progress-bar > div { height: 100%; background: #007aff; transition: width 0.3s; }
-  .step-counter { font-size: 12px; color: #8e8e93; text-transform: uppercase;
-                  letter-spacing: 0.5px; margin-bottom: 4px; }
-  .step-name { font-size: 26px; font-weight: 700; margin-bottom: 14px; }
-  .meter-row { display: grid; grid-template-columns: 48px repeat(var(--cols, 1), 1fr);
-               gap: 10px; align-items: center; margin-bottom: 10px; }
-  .meter-row.head { margin-bottom: 6px; }
-  .meter-row.head span { font-size: 12px; color: #8e8e93; text-transform: uppercase;
-                         letter-spacing: 0.5px; text-align: center; }
-  .flat-label { font-size: 18px; font-weight: 700; }
-  input.reading-input { font-size: 22px; font-weight: 600; text-align: center;
-                        padding: 12px 6px; margin-bottom: 0; }
-  input.reading-input:focus { outline: 2px solid #007aff; outline-offset: -1px; border-color: transparent; }
-  .meter-row .span-all { grid-column: 2 / -1; }
-  .extra-sep { border-top: 1px solid #f2f2f7; margin: 14px 0 12px; padding-top: 12px; }
-  .extra-sep .hint { margin: 0 0 8px; }
-  .row-buttons { display: flex; gap: 8px; margin-top: 14px; }
-  .row-buttons > button { flex: 1; margin-bottom: 0; }
-  .summary-group { margin-bottom: 20px; }
-  .summary-group h3 { font-size: 15px; margin: 0 0 8px; color: #666; }
-  .summary-item { display: flex; justify-content: space-between;
-                  padding: 8px 0; border-bottom: 1px solid #f2f2f7; font-size: 15px; }
-  .summary-item:last-child { border-bottom: none; }
-  .summary-item .empty { color: #c7c7cc; }
-  .empty-msg { color: #8e8e93; text-align: center; padding: 20px 0; }
-  .send-bar {
-    position: fixed; left: 0; right: 0; bottom: 0;
-    background: #fff; border-top: 1px solid #e5e5ea;
-    padding: 12px 16px; padding-bottom: max(12px, env(safe-area-inset-bottom));
-    box-shadow: 0 -2px 10px rgba(0,0,0,0.06); z-index: 100;
-  }
-  .send-bar button { margin-bottom: 0; }
+:root{color-scheme:light;--ink:#172033;--muted:#778196;--line:#e7ebf2;--bg:#f4f6fa;--blue:#315efb;--blue2:#eaf0ff;--green:#16845b;--white:#fff}
+*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--ink);font:15px/1.45 -apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;padding:0 0 calc(100px + env(safe-area-inset-bottom))}
+header{background:#101827;color:#fff;padding:24px 20px 26px;border-radius:0 0 24px 24px}
+.topline{display:flex;justify-content:space-between;align-items:center;gap:12px}.eyebrow{font-size:11px;text-transform:uppercase;letter-spacing:.14em;color:#aab5ca;font-weight:700}
+h1{font-size:25px;letter-spacing:-.04em;margin:5px 0 2px}.sub{color:#b9c3d4;font-size:13px}
+main{max-width:760px;margin:0 auto;padding:18px 14px}.date-card,.panel{background:var(--white);border:1px solid var(--line);border-radius:18px;padding:16px;margin-bottom:14px;box-shadow:0 5px 18px #1c2b4510}
+.date-row{display:flex;align-items:center;justify-content:space-between;gap:12px}label{font-size:13px;font-weight:700;color:#586277}input[type=date]{border:1px solid var(--line);background:#f8f9fc;border-radius:11px;padding:10px 12px;font:600 15px inherit;color:var(--ink)}
+.section-head{display:flex;justify-content:space-between;align-items:center;margin-bottom:12px}.section-title{display:flex;align-items:center;gap:10px}.symbol{width:36px;height:36px;border-radius:12px;background:var(--blue2);display:grid;place-items:center;color:var(--blue);font-size:18px}.section-head h2{font-size:17px;margin:0;letter-spacing:-.02em}.section-head p{font-size:12px;color:var(--muted);margin:1px 0 0}
+table{width:100%;border-collapse:separate;border-spacing:0 7px}th{text-align:right;color:#8992a4;font-size:11px;text-transform:uppercase;letter-spacing:.07em;font-weight:700;padding:0 8px 2px}th:first-child{text-align:left;padding-left:4px}td{padding:5px 6px;text-align:right;background:#f7f8fb}td:first-child{text-align:left;border-radius:10px 0 0 10px;width:62px;font-weight:750;padding-left:12px}td:last-child{border-radius:0 10px 10px 0}
+.reading{width:100%;min-width:0;border:1px solid #e2e7f0;background:#fff;border-radius:9px;padding:10px 8px;text-align:right;font:600 17px ui-monospace,SFMono-Regular,Menlo,monospace;color:var(--ink);outline:none}
+.reading:focus{border-color:var(--blue);box-shadow:0 0 0 3px #315efb20}.reading::placeholder{color:#c1c8d4}
+.gas-row{display:flex;align-items:center;gap:12px}.gas-row label{flex:1}.gas-row .reading{max-width:220px}
+.hint{font-size:12px;color:var(--muted);margin:10px 2px 0}.status{font-size:12px;color:var(--muted);margin-top:8px}
+.actions{display:flex;gap:9px;margin-top:14px}.btn{border:0;border-radius:12px;padding:12px 14px;font-size:14px;font-weight:750;cursor:pointer}.btn:disabled{opacity:.55;cursor:wait}.btn-light{background:#eef1f6;color:#344056}.btn-blue{background:var(--blue);color:white}.btn-green{background:var(--green);color:white}
+.bottom{position:fixed;bottom:0;left:0;right:0;background:#ffffffed;backdrop-filter:blur(14px);border-top:1px solid var(--line);padding:12px 14px calc(12px + env(safe-area-inset-bottom));z-index:5}.bottom-inner{max-width:732px;margin:auto;display:flex;gap:10px}.bottom .btn{flex:1;padding:15px 10px;font-size:15px}
+.count{font-size:12px;color:#d8e1f4;background:#ffffff18;padding:6px 9px;border-radius:20px;white-space:nowrap}
+@media(min-width:600px){main{padding:22px 20px}.panel,.date-card{padding:20px}.reading{max-width:190px}td:first-child{width:100px}}
 </style>
 </head>
 <body>
+<header><div class="topline"><div><div class="eyebrow">Panel odczytów</div><h1>Liczniki Sucha</h1><div class="sub">Wprowadź odczyty dla wszystkich mieszkań w jednym widoku.</div></div><div class="count" id="savedCount">0 zapisanych</div></div></header>
+<main>
+  <section class="date-card"><div class="date-row"><label for="date">DATA ODCZYTU</label><input type="date" id="date"></div><div class="status" id="saveStatus">Dane zapisują się automatycznie na tym urządzeniu.</div></section>
 
-<h1>Liczniki Sucha</h1>
+  <section class="panel">
+    <div class="section-head"><div class="section-title"><div class="symbol">ϟ</div><div><h2>Energia elektryczna</h2><p>Jeden odczyt dla każdego mieszkania</p></div></div></div>
+    <table><thead><tr><th>Mieszkanie</th><th>Stan licznika</th></tr></thead><tbody id="electricityRows"></tbody></table>
+  </section>
 
-<div id="setupScreen" class="card">
-  <label for="date">Data odczytu</label>
-  <input type="date" id="date">
-  <button id="startBtn">Rozpocznij odczyty</button>
-  <button id="directSendBtn" class="secondary">Przejdź od razu do podsumowania</button>
-  <div class="hint">Ekran 1: Prąd M1–M5 → Ekran 2: Woda zimna i gorąca M1–M5 + Gaz</div>
-</div>
+  <section class="panel">
+    <div class="section-head"><div class="section-title"><div class="symbol">◉</div><div><h2>Woda</h2><p>Zimna i ciepła — osobno dla każdego mieszkania</p></div></div></div>
+    <table><thead><tr><th>Mieszkanie</th><th>Zimna woda</th><th>Ciepła woda</th></tr></thead><tbody id="waterRows"></tbody></table>
+  </section>
 
-<div id="wizardScreen" class="card" style="display:none">
-  <div class="progress-bar"><div id="progressFill" style="width:0%"></div></div>
-  <div class="step-counter" id="stepCounter"></div>
-  <div class="step-name" id="stepName"></div>
-  <div id="pageBody"></div>
-  <div class="row-buttons">
-    <button id="backBtn" class="secondary">← Wstecz</button>
-    <button id="nextBtn">Dalej →</button>
-  </div>
-  <button id="finishBtn" class="success" style="margin-top:12px">Zakończ i pokaż podsumowanie</button>
-</div>
+  <section class="panel">
+    <div class="section-head"><div class="section-title"><div class="symbol">♨</div><div><h2>Gaz</h2><p>Wspólny licznik budynku</p></div></div></div>
+    <div class="gas-row"><label for="gas">WSPÓLNY LICZNIK</label><input class="reading" id="gas" type="text" inputmode="decimal" placeholder="—" autocomplete="off" data-medium="Gaz" data-flat="wspólny"></div>
+    <div class="hint">Pola, których nie odczytano, można zostawić puste.</div>
+  </section>
 
-<div id="summaryScreen" class="card" style="display:none">
-  <h2 style="margin-top:0;font-size:18px">Podsumowanie</h2>
-  <div id="summaryList"></div>
-  <button id="exportBtn" class="secondary">Eksport CSV</button>
-  <button id="editBtn" class="secondary">Wróć do edycji</button>
-  <button id="newSessionBtn" class="danger">Nowa sesja (wyczyść)</button>
-</div>
-
-<div class="send-bar">
-  <button id="globalSendBtn" class="success">Wyślij do arkusza Google</button>
-</div>
-
+  <div class="actions"><button class="btn btn-light" id="exportBtn" type="button">Eksport CSV</button><button class="btn btn-light" id="clearDateBtn" type="button">Wyczyść tę datę</button></div>
+</main>
+<div class="bottom"><div class="bottom-inner"><button class="btn btn-green" id="sendBtn" type="button">Wyślij odczyty do arkusza</button></div></div>
 <script>
 const APPS_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbzi2Jw5W_4rXo-QTBV5f7PSMbw5dPeez5dxBbF7hiJiBXJ_Eihu_zqcpPopWxfw3517/exec';
-
-const FLATS = ['1', '2', '3', '4', '5'];
-const MEDIA_ORDER = ['Prąd', 'Zimna woda', 'Gorąca woda', 'Gaz'];
-
-const PAGES = [
-  {
-    title: 'Prąd',
-    cols: ['Prąd'],
-    rows: FLATS.map(f => ({
-      label: 'M' + f,
-      fields: [{ medium: 'Prąd', flat: f }]
-    })),
-    extra: null
-  },
-  {
-    title: 'Woda i gaz',
-    cols: ['Zimna woda', 'Gorąca woda'],
-    rows: FLATS.map(f => ({
-      label: 'M' + f,
-      fields: [
-        { medium: 'Zimna woda', flat: f },
-        { medium: 'Gorąca woda', flat: f }
-      ]
-    })),
-    extra: {
-      label: 'Gaz',
-      hint: 'Gaz — wspólny licznik',
-      field: { medium: 'Gaz', flat: 'wspólny' }
-    }
-  }
-];
-
-const DB_NAME = 'licznikiDB2';
-const DB_VERSION = 1;
-const STORE = 'readings';
-
-let db;
-let currentPage = 0;
-let sessionDate = '';
-let saveQueue = Promise.resolve();
-
-const $ = id => document.getElementById(id);
-
-function openDB() {
-  return new Promise((resolve, reject) => {
-    const req = indexedDB.open(DB_NAME, DB_VERSION);
-    req.onupgradeneeded = (e) => {
-      const d = e.target.result;
-      if (!d.objectStoreNames.contains(STORE)) {
-        const store = d.createObjectStore(STORE, { keyPath: 'id', autoIncrement: true });
-        store.createIndex('sessionKey', 'sessionKey', { unique: false });
-        store.createIndex('date', 'date');
-      }
-    };
-    req.onsuccess = (e) => { db = e.target.result; resolve(db); };
-    req.onerror = (e) => reject(e.target.error);
-  });
-}
-
-function findBySessionKey(key) {
-  return new Promise((resolve, reject) => {
-    const tx = db.transaction(STORE, 'readonly');
-    const req = tx.objectStore(STORE).index('sessionKey').get(key);
-    req.onsuccess = () => resolve(req.result);
-    req.onerror = (e) => reject(e.target.error);
-  });
-}
-
-function putReading(reading) {
-  return new Promise((resolve, reject) => {
-    const tx = db.transaction(STORE, 'readwrite');
-    tx.objectStore(STORE).put(reading);
-    tx.oncomplete = () => resolve();
-    tx.onerror = (e) => reject(e.target.error);
-  });
-}
-
-function getAllReadings() {
-  return new Promise((resolve, reject) => {
-    const tx = db.transaction(STORE, 'readonly');
-    const req = tx.objectStore(STORE).getAll();
-    req.onsuccess = () => resolve(req.result);
-    req.onerror = (e) => reject(e.target.error);
-  });
-}
-
-function deleteReading(id) {
-  return new Promise((resolve, reject) => {
-    const tx = db.transaction(STORE, 'readwrite');
-    tx.objectStore(STORE).delete(id);
-    tx.oncomplete = () => resolve();
-    tx.onerror = (e) => reject(e.target.error);
-  });
-}
-
-function clearAll() {
-  return new Promise((resolve, reject) => {
-    const tx = db.transaction(STORE, 'readwrite');
-    tx.objectStore(STORE).clear();
-    tx.oncomplete = () => resolve();
-    tx.onerror = (e) => reject(e.target.error);
-  });
-}
-
-function todayISO() {
-  const d = new Date();
-  const off = d.getTimezoneOffset();
-  const local = new Date(d.getTime() - off * 60000);
-  return local.toISOString().slice(0, 10);
-}
-
-function formatDate(iso) {
-  const [y, m, d] = iso.split('-');
-  return `${d}.${m}.${y}`;
-}
-
-// Parsowanie liczb: przecinek i kropka, maksymalnie 3 miejsca po przecinku.
-function parseNumber(val) {
-  if (val === '' || val == null) return null;
-
-  const normalized = String(val).trim().replace(',', '.');
-
-  if (!/^\d+(\.\d{0,3})?$/.test(normalized)) return null;
-
-  const n = Number(normalized);
-  return Number.isFinite(n) ? n : null;
-}
-
-// Wyświetlanie zawsze 3 miejsc po przecinku.
-function formatReading(value) {
-  if (value === '' || value == null) return '';
-  return Number(value).toFixed(3).replace('.', ',');
-}
-
-function displayFlat(flat) {
-  return flat === 'wspólny' ? 'wspólny licznik' : 'M' + flat;
-}
-
-function sortReadings(a, b) {
-  const ma = MEDIA_ORDER.indexOf(a.medium);
-  const mb = MEDIA_ORDER.indexOf(b.medium);
-  if (ma !== mb) return ma - mb;
-  return String(a.flat).localeCompare(String(b.flat), 'pl', { numeric: true });
-}
-
-function fieldKey(f) {
-  return `${sessionDate}|${f.medium}|${f.flat}`;
-}
-
-async function updateGlobalSendLabel() {
-  const readings = await getAllReadings();
-  const btn = $('globalSendBtn');
-  btn.textContent = readings.length === 0
-    ? 'Wyślij do arkusza Google'
-    : `Wyślij do arkusza Google (${readings.length})`;
-}
-
-function showSetupScreen() {
-  $('wizardScreen').style.display = 'none';
-  $('summaryScreen').style.display = 'none';
-  $('setupScreen').style.display = 'block';
-}
-
-async function globalSend() {
-  if (APPS_SCRIPT_URL.indexOf('WKLEJ_TUTAJ') === 0) {
-    alert('Brak URL Apps Script.');
-    return;
-  }
-
-  await saveQueue;
-
-  const readings = await getAllReadings();
-  if (readings.length === 0) {
-    alert('Brak danych do wysłania.');
-    return;
-  }
-
-  if (!confirm(`Wysłać ${readings.length} odczytów do arkusza Google?\nPo wysyłce dane zostaną usunięte z telefonu (będą tylko w arkuszu).`)) {
-    return;
-  }
-
-  readings.sort(sortReadings);
-
-  const header = ['Medium', 'Mieszkanie', 'Data', 'Odczyt', 'Notatka'];
-  const rows = readings.map(r => [
-    r.medium,
-    displayFlat(r.flat),
-    formatDate(r.date),
-    r.reading != null ? formatReading(r.reading).replace(',', '.') : '',
-    r.note ? r.note.replace(/"/g, '""') : ''
-  ]);
-
-  const csv = [header.join(','), ...rows.map(r => r.join(','))].join('\r\n');
-
-  const btn = $('globalSendBtn');
-  btn.disabled = true;
-  btn.textContent = 'Wysyłam...';
-
-  try {
-    const resp = await fetch(APPS_SCRIPT_URL, {
-      method: 'POST',
-      headers: { 'Content-Type': 'text/plain;charset=utf-8' },
-      body: csv
-    });
-
-    const text = await resp.text();
-
-    if (text.indexOf('OK') === 0) {
-      await clearAll();
-      await updateGlobalSendLabel();
-      showSetupScreen();
-
-      const info = text.replace(/^OK\s*/, '').trim();
-      alert(`Wysłano ${readings.length} odczytów do arkusza Google.\nDane wyczyszczone z telefonu.` + (info ? `\n\n${info}` : ''));
-    } else {
-      alert('Serwer odpowiedział: ' + text + '\nDane NIE zostały wysłane. Spróbuj ponownie.');
-    }
-  } catch (err) {
-    alert('Błąd wysyłki: ' + err.message + '\nDane zostały zachowane — spróbuj ponownie.');
-  } finally {
-    btn.disabled = false;
-    await updateGlobalSendLabel();
-  }
-}
-
-// Pola tekstowe pozwalają poprawnie obsługiwać przecinek dziesiętny.
-function inputHTML(f, extraClass) {
-  return `<input type="text"
-            class="reading-input ${extraClass || ''}"
-            inputmode="decimal"
-            autocomplete="off"
-            placeholder="—"
-            data-medium="${f.medium}"
-            data-flat="${f.flat}"
-            aria-label="${f.medium} ${displayFlat(f.flat)}">`;
-}
-
-function renderPage(page) {
-  const cols = page.cols.length;
-  let html = `<div class="meter-row head" style="--cols:${cols}"><span></span>` +
-             page.cols.map(c => `<span>${c}</span>`).join('') + `</div>`;
-
-  html += page.rows.map(r => `
-    <div class="meter-row" style="--cols:${cols}">
-      <div class="flat-label">${r.label}</div>
-      ${r.fields.map(f => inputHTML(f)).join('')}
-    </div>`).join('');
-
-  if (page.extra) {
-    html += `
-    <div class="extra-sep">
-      <div class="hint">${page.extra.hint}</div>
-      <div class="meter-row" style="--cols:${cols}; margin-bottom:0">
-        <div class="flat-label">${page.extra.label}</div>
-        ${inputHTML(page.extra.field, 'span-all')}
-      </div>
-    </div>`;
-  }
-
-  $('pageBody').innerHTML = html;
-}
-
-async function showPage(index) {
-  if (index < 0) index = 0;
-  if (index >= PAGES.length) index = PAGES.length - 1;
-
-  currentPage = index;
-  const page = PAGES[index];
-
-  renderPage(page);
-
-  const all = await getAllReadings();
-  const bySession = {};
-  all.forEach(r => { bySession[r.sessionKey] = r; });
-
-  $('pageBody').querySelectorAll('input.reading-input').forEach(inp => {
-    const f = { medium: inp.dataset.medium, flat: inp.dataset.flat };
-    const existing = bySession[fieldKey(f)];
-
-    inp.value = existing && existing.reading != null
-      ? formatReading(existing.reading)
-      : '';
-  });
-
-  $('stepCounter').textContent = `Ekran ${index + 1} z ${PAGES.length} · wypełniono ${all.length}`;
-  $('stepName').textContent = page.title;
-  $('progressFill').style.width = (index / PAGES.length * 100) + '%';
-
-  const last = index === PAGES.length - 1;
-  $('backBtn').style.display = index === 0 ? 'none' : '';
-  $('nextBtn').style.display = last ? 'none' : '';
-  $('finishBtn').style.display = last ? '' : 'none';
-
-  $('setupScreen').style.display = 'none';
-  $('summaryScreen').style.display = 'none';
-  $('wizardScreen').style.display = 'block';
-
-  window.scrollTo(0, 0);
-}
-
-function saveField(f, raw) {
-  const task = async () => {
-    const key = fieldKey(f);
-    const existing = await findBySessionKey(key);
-    const value = raw.trim();
-
-    if (value === '') {
-      if (existing) await deleteReading(existing.id);
-    } else {
-      const reading = parseNumber(value);
-      if (reading == null) return;
-
-      await putReading({
-        id: existing ? existing.id : undefined,
-        sessionKey: key,
-        date: sessionDate,
-        medium: f.medium,
-        flat: f.flat,
-        reading,
-        note: existing && existing.note ? existing.note : '',
-        createdAt: existing ? existing.createdAt : new Date().toISOString()
-      });
-    }
-
-    await updateGlobalSendLabel();
-  };
-
-  saveQueue = saveQueue.then(task).catch(err => console.warn('Błąd zapisu:', err));
-  return saveQueue;
-}
-
-async function finishWizard() {
-  await saveQueue;
-
-  $('wizardScreen').style.display = 'none';
-  $('setupScreen').style.display = 'none';
-  $('summaryScreen').style.display = 'block';
-
-  const readings = await getAllReadings();
-  const list = $('summaryList');
-
-  if (readings.length === 0) {
-    list.innerHTML = '<div class="empty-msg">Brak zapisanych odczytów.</div>';
-    return;
-  }
-
-  readings.sort(sortReadings);
-
-  const groups = {};
-  readings.forEach(r => {
-    if (!groups[r.medium]) groups[r.medium] = [];
-    groups[r.medium].push(r);
-  });
-
-  list.innerHTML = Object.keys(groups).map(medium => {
-    const items = groups[medium].map(r => `
-      <div class="summary-item">
-        <span>${displayFlat(r.flat)}</span>
-        <span>${r.reading != null ? formatReading(r.reading) : '—'}</span>
-      </div>
-    `).join('');
-
-    return `<div class="summary-group"><h3>${medium}</h3>${items}</div>`;
-  }).join('');
-}
-
-// ---------- Start / przyciski ----------
-
-$('startBtn').addEventListener('click', async () => {
-  sessionDate = $('date').value;
-  if (!sessionDate) {
-    alert('Wybierz datę.');
-    return;
-  }
-  await showPage(0);
-});
-
-$('directSendBtn').addEventListener('click', async () => {
-  sessionDate = $('date').value;
-  if (!sessionDate) {
-    alert('Wybierz datę.');
-    return;
-  }
-  await finishWizard();
-});
-
-$('nextBtn').addEventListener('click', async () => {
-  await saveQueue;
-  await showPage(currentPage + 1);
-});
-
-$('backBtn').addEventListener('click', async () => {
-  await saveQueue;
-  await showPage(currentPage - 1);
-});
-
-$('finishBtn').addEventListener('click', finishWizard);
-
-$('pageBody').addEventListener('input', (e) => {
-  const inp = e.target;
-  if (!inp.classList.contains('reading-input')) return;
-
-  saveField(
-    { medium: inp.dataset.medium, flat: inp.dataset.flat },
-    inp.value
-  );
-});
-
-$('pageBody').addEventListener('keydown', (e) => {
-  if (e.key !== 'Enter' || !e.target.classList.contains('reading-input')) return;
-
-  e.preventDefault();
-
-  const inputs = Array.from($('pageBody').querySelectorAll('input.reading-input'));
-  const i = inputs.indexOf(e.target);
-
-  if (i >= 0 && i < inputs.length - 1) inputs[i + 1].focus();
-  else e.target.blur();
-});
-
-$('editBtn').addEventListener('click', () => showPage(0));
-
-$('newSessionBtn').addEventListener('click', async () => {
-  if (!confirm('Wyczyścić wszystkie zapisane odczyty z telefonu? (Niewysłane dane przepadną.)')) return;
-
-  await saveQueue;
-  await clearAll();
-  await updateGlobalSendLabel();
-  showSetupScreen();
-});
-
-$('globalSendBtn').addEventListener('click', globalSend);
-
-// ---------- Eksport CSV ----------
-
-$('exportBtn').addEventListener('click', async () => {
-  const readings = await getAllReadings();
-
-  if (readings.length === 0) {
-    alert('Brak danych.');
-    return;
-  }
-
-  readings.sort(sortReadings);
-
-  const header = ['Medium', 'Mieszkanie', 'Data', 'Odczyt', 'Notatka'];
-
-  const rows = readings.map(r => [
-    r.medium,
-    displayFlat(r.flat),
-    r.date,
-    r.reading != null ? formatReading(r.reading) : '',
-    r.note ? '"' + r.note.replace(/"/g, '""') + '"' : ''
-  ]);
-
-  const csv = [header.join(','), ...rows.map(r => r.join(','))].join('\r\n');
-
-  const blob = new Blob(['\uFEFF' + csv], { type: 'text/csv;charset=utf-8;' });
-  const url = URL.createObjectURL(blob);
-  const a = document.createElement('a');
-
-  a.href = url;
-  a.download = `liczniki_${todayISO()}.csv`;
-
-  document.body.appendChild(a);
-  a.click();
-  document.body.removeChild(a);
-
-  setTimeout(() => URL.revokeObjectURL(url), 1000);
-});
-
-// ---------- Init ----------
-
-if ('serviceWorker' in navigator) {
-  navigator.serviceWorker.register('sw.js').then(() => {
-    console.log('Service Worker zarejestrowany');
-  }).catch((err) => console.warn('SW błąd:', err));
-}
-
-(async function init() {
-  $('date').value = todayISO();
-  await openDB();
-  await updateGlobalSendLabel();
-})();
+const FLATS=['1','2','3','4','5'], MEDIA_ORDER=['Prąd','Zimna woda','Gorąca woda','Gaz'];
+const DB_NAME='licznikiDB2', STORE='readings';
+let db, saveQueue=Promise.resolve();
+const $=id=>document.getElementById(id);
+function todayISO(){const d=new Date(),local=new Date(d.getTime()-d.getTimezoneOffset()*60000);return local.toISOString().slice(0,10)}
+function formatDate(iso){const [y,m,d]=iso.split('-');return `${d}.${m}.${y}`}
+function parseNumber(v){if(v===''||v==null)return null;const s=String(v).trim().replace(',','.');if(!/^\d+(\.\d{0,3})?$/.test(s))return null;const n=Number(s);return Number.isFinite(n)?n:null}
+function formatReading(v){return v==null?'':Number(v).toFixed(3).replace('.',',')}
+function displayFlat(f){return f==='wspólny'?'wspólny licznik':'M'+f}
+function key(date,medium,flat){return `${date}|${medium}|${flat}`}
+function openDB(){return new Promise((resolve,reject)=>{const req=indexedDB.open(DB_NAME,1);req.onupgradeneeded=e=>{const s=e.target.result.createObjectStore(STORE,{keyPath:'id',autoIncrement:true});s.createIndex('sessionKey','sessionKey',{unique:false});s.createIndex('date','date')};req.onsuccess=e=>{db=e.target.result;resolve()};req.onerror=e=>reject(e.target.error)})}
+function allReadings(){return new Promise((resolve,reject)=>{const r=db.transaction(STORE).objectStore(STORE).getAll();r.onsuccess=()=>resolve(r.result);r.onerror=()=>reject(r.error)})}
+function findKey(k){return new Promise((resolve,reject)=>{const r=db.transaction(STORE).objectStore(STORE).index('sessionKey').get(k);r.onsuccess=()=>resolve(r.result);r.onerror=()=>reject(r.error)})}
+function put(r){return new Promise((resolve,reject)=>{const tx=db.transaction(STORE,'readwrite');tx.objectStore(STORE).put(r);tx.oncomplete=resolve;tx.onerror=()=>reject(tx.error)})}
+function remove(id){return new Promise((resolve,reject)=>{const tx=db.transaction(STORE,'readwrite');tx.objectStore(STORE).delete(id);tx.oncomplete=resolve;tx.onerror=()=>reject(tx.error)})}
+function clearDate(date){return new Promise(async(resolve,reject)=>{try{const rows=(await allReadings()).filter(r=>r.date===date);const tx=db.transaction(STORE,'readwrite'),s=tx.objectStore(STORE);rows.forEach(r=>s.delete(r.id));tx.oncomplete=resolve;tx.onerror=()=>reject(tx.error)}catch(e){reject(e)}})}
+function render(){const e=$('electricityRows'),w=$('waterRows');e.innerHTML=FLATS.map(f=>`<tr><td>M${f}</td><td><input class="reading" type="text" inputmode="decimal" placeholder="—" data-medium="Prąd" data-flat="${f}" aria-label="Prąd M${f}"></td></tr>`).join('');w.innerHTML=FLATS.map(f=>`<tr><td>M${f}</td><td><input class="reading" type="text" inputmode="decimal" placeholder="—" data-medium="Zimna woda" data-flat="${f}" aria-label="Zimna woda M${f}"></td><td><input class="reading" type="text" inputmode="decimal" placeholder="—" data-medium="Gorąca woda" data-flat="${f}" aria-label="Gorąca woda M${f}"></td></tr>`).join('')}
+async function refresh(){await saveQueue;const date=$('date').value,rows=(await allReadings()).filter(r=>r.date===date),map=new Map(rows.map(r=>[r.sessionKey,r]));document.querySelectorAll('.reading').forEach(inp=>{const r=map.get(key(date,inp.dataset.medium,inp.dataset.flat));inp.value=r?formatReading(r.reading):''});$('savedCount').textContent=`${rows.length} zapisanych`; }
+function saveInput(inp){const date=$('date').value,medium=inp.dataset.medium,flat=inp.dataset.flat,raw=inp.value;saveQueue=saveQueue.then(async()=>{const k=key(date,medium,flat),old=await findKey(k),v=raw.trim();if(!v){if(old)await remove(old.id)}else{const n=parseNumber(v);if(n===null){$('saveStatus').textContent='Nieprawidłowy format. Użyj maksymalnie 3 miejsc po przecinku.';return}await put({id:old?.id,sessionKey:k,date,medium,flat,reading:n,note:old?.note||'',createdAt:old?.createdAt||new Date().toISOString()})}$('saveStatus').textContent='Zapisano automatycznie na tym urządzeniu.';const rows=(await allReadings()).filter(r=>r.date===date);$('savedCount').textContent=`${rows.length} zapisanych`}).catch(err=>{$('saveStatus').textContent='Błąd zapisu: '+err.message})}
+function sorted(rows){return rows.sort((a,b)=>MEDIA_ORDER.indexOf(a.medium)-MEDIA_ORDER.indexOf(b.medium)||String(a.flat).localeCompare(String(b.flat),'pl',{numeric:true}))}
+function csvFor(rows){const q=v=>'"'+String(v??'').replace(/"/g,'""')+'"';return [['Medium','Mieszkanie','Data','Odczyt','Notatka'],...sorted(rows).map(r=>[r.medium,displayFlat(r.flat),formatDate(r.date),String(r.reading).replace('.',','),r.note||''])].map(row=>row.map(q).join(',')).join('\r\n')}
+async function exportCSV(){await saveQueue;const date=$('date').value,rows=(await allReadings()).filter(r=>r.date===date);if(!rows.length){alert('Brak odczytów dla wybranej daty.');return}const blob=new Blob(['\ufeff'+csvFor(rows)],{type:'text/csv;charset=utf-8'}),url=URL.createObjectURL(blob),a=document.createElement('a');a.href=url;a.download=`liczniki_${date}.csv`;a.click();URL.revokeObjectURL(url)}
+async function send(){await saveQueue;const date=$('date').value,rows=sorted((await allReadings()).filter(r=>r.date===date));if(!rows.length){alert('Brak odczytów dla wybranej daty.');return}if(rows.some(r=>!Number.isFinite(r.reading))){alert('W danych jest nieprawidłowy odczyt.');return}if(!confirm(`Wysłać ${rows.length} odczytów z dnia ${formatDate(date)} do arkusza?`))return;const btn=$('sendBtn');btn.disabled=true;btn.textContent='Wysyłanie…';const csv=csvFor(rows);try{const response=await fetch(APPS_SCRIPT_URL,{method:'POST',headers:{'Content-Type':'text/plain;charset=utf-8'},body:csv});const message=await response.text();if(!response.ok||!message.startsWith('OK'))throw new Error(message||`HTTP ${response.status}`);for(const r of rows)await remove(r.id);await refresh();alert(message)}catch(err){alert('Nie potwierdzono poprawnej wysyłki. Dane pozostają zapisane na urządzeniu.\\n\\n'+err.message)}finally{btn.disabled=false;btn.textContent='Wyślij odczyty do arkusza'}}
+document.addEventListener('input',e=>{if(e.target.matches('.reading'))saveInput(e.target)});
+$('date').addEventListener('change',refresh);$('sendBtn').addEventListener('click',send);$('exportBtn').addEventListener('click',exportCSV);
+$('clearDateBtn').addEventListener('click',async()=>{const d=$('date').value;if(!confirm(`Usunąć lokalne odczyty z dnia ${formatDate(d)}?`))return;await saveQueue;await clearDate(d);await refresh()});
+(async()=>{render();$('date').value=todayISO();await openDB();await refresh()})().catch(e=>alert('Nie udało się uruchomić aplikacji: '+e.message));
+if('serviceWorker'in navigator)navigator.serviceWorker.register('./sw.js').catch(console.warn);
 </script>
-</body>
-</html>
+</body></html>
