@@ -268,7 +268,7 @@ td:last-child{border-right:1px solid #edf2f7;border-radius:0 14px 14px 0}
         <div class="symbol">💧</div>
         <div>
           <h2>Woda</h2>
-          <p>Zimna i ciepła woda · różnica i trend vs poprz. odczyt</p>
+          <p>Zimna i ciepła woda · różnica i trend vs poprz. zużycie</p>
         </div>
       </div>
     </div>
@@ -321,7 +321,7 @@ const DB_NAME = 'licznikiDB2';
 const STORE_READINGS = 'readings';
 const STORE_HISTORY = 'historyCache';
 
-let db, saveQueue = Promise.resolve(), historyRows = [];
+let db, saveQueue = Promise.resolve(), historyRows = [], historyConsumptions = [];
 const $ = id => document.getElementById(id);
 
 function todayISO(){
@@ -422,10 +422,10 @@ function clearDate(date){
     }catch(e){ reject(e); }
   });
 }
-function saveHistoryCache(items){
+function saveHistoryCache(items, consumptions = historyConsumptions){
   return new Promise((resolve, reject) => {
     const tx = db.transaction(STORE_HISTORY, 'readwrite');
-    tx.objectStore(STORE_HISTORY).put({ id: 'latest', items, updatedAt: Date.now() });
+    tx.objectStore(STORE_HISTORY).put({ id: 'latest', items, consumptions, updatedAt: Date.now() });
     tx.oncomplete = resolve;
     tx.onerror = () => reject(tx.error);
   });
@@ -433,7 +433,10 @@ function saveHistoryCache(items){
 function loadHistoryCache(){
   return new Promise((resolve, reject) => {
     const r = db.transaction(STORE_HISTORY).objectStore(STORE_HISTORY).get('latest');
-    r.onsuccess = () => resolve(r.result?.items || []);
+    r.onsuccess = () => resolve({
+      readings: r.result?.items || [],
+      consumptions: r.result?.consumptions || []
+    });
     r.onerror = () => reject(r.error);
   });
 }
@@ -443,6 +446,7 @@ async function fetchRemoteHistory(silent = false){
     const res = await fetch(`${APPS_SCRIPT_URL}?mode=history`, { cache: 'no-store' });
     if(!res.ok) throw new Error(`HTTP ${res.status}`);
     const data = await res.json();
+
     if(Array.isArray(data.readings)){
       historyRows = data.readings.map(h => ({
         medium: String(h.medium ?? '').trim(),
@@ -450,15 +454,24 @@ async function fetchRemoteHistory(silent = false){
         date: normDateISO(h.date),
         reading: Number(h.reading)
       })).filter(h => h.medium && h.flat && /^\d{4}-\d{2}-\d{2}$/.test(h.date) && Number.isFinite(h.reading));
+    }
 
-      await saveHistoryCache(historyRows);
-      await refresh();
-      $('saveStatus').textContent = `Historia: ${historyRows.length} wpisów z arkusza.`;
-    }else{
-      $('saveStatus').textContent = 'Odpowiedź historii nie zawiera tablicy readings (sprawdź wdrożenie Apps Script).';
+    if(Array.isArray(data.consumptions)){
+      historyConsumptions = data.consumptions.map(c => ({
+        medium: String(c.medium ?? '').trim(),
+        flat: normFlat(c.flat),
+        date: normDateISO(c.date),
+        consumption: Number(c.consumption)
+      })).filter(c => c.medium && c.flat && /^\d{4}-\d{2}-\d{2}$/.test(c.date) && Number.isFinite(c.consumption) && c.consumption >= 0);
+    }
+
+    await saveHistoryCache(historyRows, historyConsumptions);
+    await refresh();
+    if(!silent || historyRows.length || historyConsumptions.length){
+      $('saveStatus').textContent = `Historia: ${historyConsumptions.length} zużycia, ${historyRows.length} odczytów.`;
     }
   }catch(err){
-    $('saveStatus').textContent = `Brak historii z arkusza (${err.message}) — używam cache (${historyRows.length} wpisów).`;
+    $('saveStatus').textContent = `Brak historii z arkusza (${err.message}) — używam cache (${historyConsumptions.length} zużycia).`;
   }
 }
 
@@ -477,14 +490,25 @@ function seriesBeforeDate(medium, flat, currentDate){
     .map(([date, reading]) => ({ date, reading }));
 }
 
-function sameDateHistoryReading(medium, flat, currentDate){
+function latestConsumptionBeforeDate(medium, flat, currentDate){
   const targetFlat = normFlat(flat);
   const targetDate = normDateISO(currentDate);
-  for(let i = historyRows.length - 1; i >= 0; i--){
-    const h = historyRows[i];
-    if(h.medium === medium && normFlat(h.flat) === targetFlat && normDateISO(h.date) === targetDate){
-      return Number(h.reading);
+  const merged = new Map();
+  for(const c of historyConsumptions){
+    const cDate = normDateISO(c.date);
+    if(c.medium === medium && normFlat(c.flat) === targetFlat && cDate < targetDate && Number(c.consumption) >= 0){
+      merged.set(cDate, Number(c.consumption));
     }
+  }
+  const sorted = Array.from(merged.entries()).sort((a,b) => a[0].localeCompare(b[0]));
+  if(sorted.length > 0){
+    const [date, consumption] = sorted[sorted.length - 1];
+    return { date, consumption };
+  }
+  const s = seriesBeforeDate(medium, flat, currentDate);
+  if(s.length >= 2){
+    const diff = +(s[s.length - 1].reading - s[s.length - 2].reading).toFixed(3);
+    if(diff >= 0) return { date: s[s.length - 1].date, consumption: diff };
   }
   return null;
 }
@@ -504,6 +528,7 @@ function calcTrendBadge(currCons, prevCons){
   }
   return { cls: diff > 0 ? 'up' : 'down', text: diff > 0 ? `↑ +${fmtNum(diff)}` : `↓ ${fmtNum(diff)}` };
 }
+
 function updateInputMeta(inp, draftMap){
   const date = $('date').value;
   const medium = inp.dataset.medium;
@@ -554,51 +579,6 @@ function updateInputMeta(inp, draftMap){
     metaEl.innerHTML = parts.join('<span>·</span>');
   }
 }
-  const date = $('date').value;
-  const medium = inp.dataset.medium;
-  const flat = inp.dataset.flat;
-  const metaEl = document.getElementById(`meta-${medium}-${flat}`);
-  if(!metaEl) return;
-
-  const series = seriesBeforeDate(medium, flat, date);
-  const prev1 = series.length >= 1 ? series[series.length - 1] : null;
-  const prev2 = series.length >= 2 ? series[series.length - 2] : null;
-  const prevCons = (prev1 && prev2) ? +(prev1.reading - prev2.reading).toFixed(3) : null;
-
-  const parsedDraft = parseNumber(inp.value);
-  const activeReading = (inp.value.trim() !== '' && parsedDraft !== null)
-    ? parsedDraft
-    : (draftMap?.get(key(date, medium, flat))?.reading ?? null);
-
-  inp.classList.toggle('invalid', inp.value.trim() !== '' && parsedDraft === null);
-
-  if(!prev1){
-    const sameDay = sameDateHistoryReading(medium, flat, date);
-    if(sameDay !== null){
-      metaEl.innerHTML = `<span>W arkuszu na ten dzień: <b>${fmtNum(sameDay, 3)}</b></span>`;
-    }else{
-      metaEl.innerHTML = `<span>Brak wcześniejszego odczytu przed ${formatDate(date)}</span>`;
-    }
-    return;
-  }
-
-  let html = `<span>Poprz. (${formatDate(prev1.date)}): <b>${fmtNum(prev1.reading, 3)}</b></span>`;
-  if(activeReading !== null){
-    const cons = +(activeReading - prev1.reading).toFixed(3);
-    if(cons < 0){
-      html += `<span class="delta-pill up">mniejszy stan (${fmtNum(cons, 3)})</span>`;
-    }else{
-      html += `<span>Zużycie: <b>${fmtNum(cons, 2)}</b></span>`;
-      if(prevCons !== null){
-        const b = calcTrendBadge(cons, prevCons);
-        html += `<span class="delta-pill ${b.cls}">${b.text}</span>`;
-      }else{
-        html += `<span class="delta-pill flat">1. zużycie w bazie</span>`;
-      }
-    }
-  }
-  metaEl.innerHTML = html;
-}
 
 function renderKPIs(draftMap){
   const date = $('date').value;
@@ -613,13 +593,13 @@ function renderKPIs(draftMap){
     let currTotal = 0, prevTotal = 0, hasCurr = false, hasPrev = false;
 
     for(const f of sp.flats){
-      const s = seriesBeforeDate(sp.medium, f, date);
-      const r1 = s.length >= 1 ? s[s.length - 1] : null;
-      const r2 = s.length >= 2 ? s[s.length - 2] : null;
-      if(r1 && r2){
-        prevTotal += (r1.reading - r2.reading);
+      const prevC = latestConsumptionBeforeDate(sp.medium, f, date);
+      if(prevC && prevC.consumption >= 0){
+        prevTotal += prevC.consumption;
         hasPrev = true;
       }
+      const s = seriesBeforeDate(sp.medium, f, date);
+      const r1 = s.length >= 1 ? s[s.length - 1] : null;
       const draftVal = draftMap.get(key(date, sp.medium, f))?.reading;
       const inpEl = document.querySelector(`.reading[data-medium="${sp.medium}"][data-flat="${f}"]`);
       const liveVal = inpEl && inpEl.value.trim() !== '' ? parseNumber(inpEl.value) : draftVal;
@@ -630,7 +610,7 @@ function renderKPIs(draftMap){
     }
 
     const displayCons = hasCurr ? currTotal : (hasPrev ? prevTotal : null);
-    const labelMode = hasCurr ? 'bieżący szkic' : (hasPrev ? 'poprzedni okres' : 'brak 2 wcześniejszych odczytów');
+    const labelMode = hasCurr ? 'bieżący szkic' : (hasPrev ? 'poprzedni okres' : 'brak danych historycznych');
     const badge = (hasCurr && hasPrev)
       ? calcTrendBadge(currTotal, prevTotal)
       : { cls: 'flat', text: hasPrev ? 'ostatni zamknięty' : 'brak porównania' };
@@ -816,7 +796,7 @@ async function send(){
       else historyRows = historyRows.map(h => (`${h.date}|${h.medium}|${h.flat}` === k ? { ...h, reading: r.reading } : h));
       await removeReading(r.id);
     }
-    await saveHistoryCache(historyRows);
+    await saveHistoryCache(historyRows, historyConsumptions);
     await refresh();
     $('saveStatus').textContent = 'Wysłano do arkusza i wyczyszczono szkic dla tej daty.';
     alert(message);
@@ -867,7 +847,9 @@ $('clearDateBtn').addEventListener('click', async () => {
   render();
   $('date').value = todayISO();
   await openDB();
-  historyRows = await loadHistoryCache();
+  const cached = await loadHistoryCache();
+  historyRows = cached.readings;
+  historyConsumptions = cached.consumptions;
   await refresh();
   fetchRemoteHistory(true);
 })().catch(e => alert('Nie udało się uruchomić aplikacji: ' + e.message));
