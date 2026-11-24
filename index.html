@@ -268,7 +268,7 @@ td:last-child{border-right:1px solid #edf2f7;border-radius:0 14px 14px 0}
         <div class="symbol">💧</div>
         <div>
           <h2>Woda</h2>
-          <p>Zimna i ciepła woda · różnica i trend vs poprz. zużycie</p>
+          <p>Zimna i ciepła woda · różnica i trend vs poprz. odczyt</p>
         </div>
       </div>
     </div>
@@ -321,7 +321,7 @@ const DB_NAME = 'licznikiDB2';
 const STORE_READINGS = 'readings';
 const STORE_HISTORY = 'historyCache';
 
-let db, saveQueue = Promise.resolve(), historyRows = [], historyConsumptions = [];
+let db, saveQueue = Promise.resolve(), historyRows = [];
 const $ = id => document.getElementById(id);
 
 function todayISO(){
@@ -422,10 +422,10 @@ function clearDate(date){
     }catch(e){ reject(e); }
   });
 }
-function saveHistoryCache(items, consumptions = historyConsumptions){
+function saveHistoryCache(items){
   return new Promise((resolve, reject) => {
     const tx = db.transaction(STORE_HISTORY, 'readwrite');
-    tx.objectStore(STORE_HISTORY).put({ id: 'latest', items, consumptions, updatedAt: Date.now() });
+    tx.objectStore(STORE_HISTORY).put({ id: 'latest', items, updatedAt: Date.now() });
     tx.oncomplete = resolve;
     tx.onerror = () => reject(tx.error);
   });
@@ -433,10 +433,7 @@ function saveHistoryCache(items, consumptions = historyConsumptions){
 function loadHistoryCache(){
   return new Promise((resolve, reject) => {
     const r = db.transaction(STORE_HISTORY).objectStore(STORE_HISTORY).get('latest');
-    r.onsuccess = () => resolve({
-      readings: r.result?.items || [],
-      consumptions: r.result?.consumptions || []
-    });
+    r.onsuccess = () => resolve(r.result?.items || []);
     r.onerror = () => reject(r.error);
   });
 }
@@ -446,7 +443,6 @@ async function fetchRemoteHistory(silent = false){
     const res = await fetch(`${APPS_SCRIPT_URL}?mode=history`, { cache: 'no-store' });
     if(!res.ok) throw new Error(`HTTP ${res.status}`);
     const data = await res.json();
-
     if(Array.isArray(data.readings)){
       historyRows = data.readings.map(h => ({
         medium: String(h.medium ?? '').trim(),
@@ -454,24 +450,15 @@ async function fetchRemoteHistory(silent = false){
         date: normDateISO(h.date),
         reading: Number(h.reading)
       })).filter(h => h.medium && h.flat && /^\d{4}-\d{2}-\d{2}$/.test(h.date) && Number.isFinite(h.reading));
-    }
 
-    if(Array.isArray(data.consumptions)){
-      historyConsumptions = data.consumptions.map(c => ({
-        medium: String(c.medium ?? '').trim(),
-        flat: normFlat(c.flat),
-        date: normDateISO(c.date),
-        consumption: Number(c.consumption)
-      })).filter(c => c.medium && c.flat && /^\d{4}-\d{2}-\d{2}$/.test(c.date) && Number.isFinite(c.consumption) && c.consumption >= 0);
-    }
-
-    await saveHistoryCache(historyRows, historyConsumptions);
-    await refresh();
-    if(!silent || historyRows.length || historyConsumptions.length){
-      $('saveStatus').textContent = `Historia: ${historyConsumptions.length} zużycia, ${historyRows.length} odczytów.`;
+      await saveHistoryCache(historyRows);
+      await refresh();
+      $('saveStatus').textContent = `Historia: ${historyRows.length} odczytów z arkusza.`;
+    }else{
+      $('saveStatus').textContent = 'Odpowiedź historii nie zawiera tablicy readings (sprawdź wdrożenie Apps Script).';
     }
   }catch(err){
-    $('saveStatus').textContent = `Brak historii z arkusza (${err.message}) — używam cache (${historyConsumptions.length} zużycia).`;
+    $('saveStatus').textContent = `Brak historii z arkusza (${err.message}) — używam cache (${historyRows.length} wpisów).`;
   }
 }
 
@@ -488,29 +475,6 @@ function seriesBeforeDate(medium, flat, currentDate){
   return Array.from(merged.entries())
     .sort((a,b) => a[0].localeCompare(b[0]))
     .map(([date, reading]) => ({ date, reading }));
-}
-
-function latestConsumptionBeforeDate(medium, flat, currentDate){
-  const targetFlat = normFlat(flat);
-  const targetDate = normDateISO(currentDate);
-  const merged = new Map();
-  for(const c of historyConsumptions){
-    const cDate = normDateISO(c.date);
-    if(c.medium === medium && normFlat(c.flat) === targetFlat && cDate < targetDate && Number(c.consumption) >= 0){
-      merged.set(cDate, Number(c.consumption));
-    }
-  }
-  const sorted = Array.from(merged.entries()).sort((a,b) => a[0].localeCompare(b[0]));
-  if(sorted.length > 0){
-    const [date, consumption] = sorted[sorted.length - 1];
-    return { date, consumption };
-  }
-  const s = seriesBeforeDate(medium, flat, currentDate);
-  if(s.length >= 2){
-    const diff = +(s[s.length - 1].reading - s[s.length - 2].reading).toFixed(3);
-    if(diff >= 0) return { date: s[s.length - 1].date, consumption: diff };
-  }
-  return null;
 }
 
 function calcTrendBadge(currCons, prevCons){
@@ -538,9 +502,8 @@ function updateInputMeta(inp, draftMap){
 
   const series = seriesBeforeDate(medium, flat, date);
   const prev1 = series.length >= 1 ? series[series.length - 1] : null;
-  const prevConsObj = latestConsumptionBeforeDate(medium, flat, date);
-  const prevCons = prevConsObj ? prevConsObj.consumption : null;
-  const prevConsDate = prevConsObj ? prevConsObj.date : null;
+  const prev2 = series.length >= 2 ? series[series.length - 2] : null;
+  const prevCons = (prev1 && prev2) ? +(prev1.reading - prev2.reading).toFixed(3) : null;
 
   const parsedDraft = parseNumber(inp.value);
   const activeReading = (inp.value.trim() !== '' && parsedDraft !== null)
@@ -549,35 +512,25 @@ function updateInputMeta(inp, draftMap){
 
   inp.classList.toggle('invalid', inp.value.trim() !== '' && parsedDraft === null);
 
-  const parts = [];
-
-  if(prev1){
-    parts.push(`<span>Poprz. odczyt (${formatDate(prev1.date)}): <b>${fmtNum(prev1.reading, 3)}</b></span>`);
+  if(!prev1){
+    metaEl.innerHTML = `<span>Brak poprzedniego odczytu przed ${formatDate(date)}</span>`;
+    return;
   }
 
-  if(prevCons !== null){
-    const consDateLbl = prevConsDate ? ` (${formatDate(prevConsDate)})` : '';
-    parts.push(`<span>Poprz. zużycie${consDateLbl}: <b>${fmtNum(prevCons, 2)}</b></span>`);
-  }
-
-  if(prev1 && activeReading !== null){
+  let html = `<span>Poprz. odczyt (${formatDate(prev1.date)}): <b>${fmtNum(prev1.reading, 3)}</b></span>`;
+  if(activeReading !== null){
     const cons = +(activeReading - prev1.reading).toFixed(3);
     if(cons < 0){
-      parts.push(`<span class="delta-pill up">mniejszy stan (${fmtNum(cons, 3)})</span>`);
+      html += `<span>·</span><span class="delta-pill up">mniejszy stan (${fmtNum(cons, 3)})</span>`;
     }else{
-      parts.push(`<span>Zużycie: <b>${fmtNum(cons, 2)}</b></span>`);
-      if(prevCons !== null){
+      html += `<span>·</span><span>Zużycie: <b>${fmtNum(cons, 2)}</b></span>`;
+      if(prevCons !== null && prevCons >= 0){
         const b = calcTrendBadge(cons, prevCons);
-        parts.push(`<span class="delta-pill ${b.cls}">${b.text}</span>`);
+        html += `<span class="delta-pill ${b.cls}">${b.text}</span>`;
       }
     }
   }
-
-  if(!parts.length){
-    metaEl.innerHTML = `<span>Brak wcześniejszych danych przed ${formatDate(date)}</span>`;
-  }else{
-    metaEl.innerHTML = parts.join('<span>·</span>');
-  }
+  metaEl.innerHTML = html;
 }
 
 function renderKPIs(draftMap){
@@ -593,13 +546,13 @@ function renderKPIs(draftMap){
     let currTotal = 0, prevTotal = 0, hasCurr = false, hasPrev = false;
 
     for(const f of sp.flats){
-      const prevC = latestConsumptionBeforeDate(sp.medium, f, date);
-      if(prevC && prevC.consumption >= 0){
-        prevTotal += prevC.consumption;
-        hasPrev = true;
-      }
       const s = seriesBeforeDate(sp.medium, f, date);
       const r1 = s.length >= 1 ? s[s.length - 1] : null;
+      const r2 = s.length >= 2 ? s[s.length - 2] : null;
+      if(r1 && r2){
+        prevTotal += (r1.reading - r2.reading);
+        hasPrev = true;
+      }
       const draftVal = draftMap.get(key(date, sp.medium, f))?.reading;
       const inpEl = document.querySelector(`.reading[data-medium="${sp.medium}"][data-flat="${f}"]`);
       const liveVal = inpEl && inpEl.value.trim() !== '' ? parseNumber(inpEl.value) : draftVal;
@@ -610,7 +563,7 @@ function renderKPIs(draftMap){
     }
 
     const displayCons = hasCurr ? currTotal : (hasPrev ? prevTotal : null);
-    const labelMode = hasCurr ? 'bieżący szkic' : (hasPrev ? 'poprzedni okres' : 'brak danych historycznych');
+    const labelMode = hasCurr ? 'bieżący szkic' : (hasPrev ? 'poprzedni okres' : 'brak 2 wcześniejszych odczytów');
     const badge = (hasCurr && hasPrev)
       ? calcTrendBadge(currTotal, prevTotal)
       : { cls: 'flat', text: hasPrev ? 'ostatni zamknięty' : 'brak porównania' };
@@ -796,7 +749,7 @@ async function send(){
       else historyRows = historyRows.map(h => (`${h.date}|${h.medium}|${h.flat}` === k ? { ...h, reading: r.reading } : h));
       await removeReading(r.id);
     }
-    await saveHistoryCache(historyRows, historyConsumptions);
+    await saveHistoryCache(historyRows);
     await refresh();
     $('saveStatus').textContent = 'Wysłano do arkusza i wyczyszczono szkic dla tej daty.';
     alert(message);
@@ -847,9 +800,7 @@ $('clearDateBtn').addEventListener('click', async () => {
   render();
   $('date').value = todayISO();
   await openDB();
-  const cached = await loadHistoryCache();
-  historyRows = cached.readings;
-  historyConsumptions = cached.consumptions;
+  historyRows = await loadHistoryCache();
   await refresh();
   fetchRemoteHistory(true);
 })().catch(e => alert('Nie udało się uruchomić aplikacji: ' + e.message));
