@@ -39,6 +39,7 @@ body{
   -webkit-font-smoothing:antialiased;
 }
 
+/* Header */
 header{
   background:linear-gradient(160deg, var(--navy) 0%, #172554 100%);
   color:#fff;
@@ -62,13 +63,13 @@ h1{font-size:26px;letter-spacing:-.03em;margin:6px 0 3px;font-weight:800}
   padding:6px 11px;border-radius:999px;white-space:nowrap;backdrop-filter:blur(8px);
 }
 .sync-btn{
-  background:rgba(255,255,255,.12);border:1px solid rgba(255,255,255,.22);
-  color:#fff;font-size:12px;font-weight:600;padding:6px 12px;border-radius:999px;
+  background:rgba(255,255,255,.08);border:1px solid rgba(255,255,255,.16);
+  color:#bfdbfe;font-size:11px;font-weight:600;padding:5px 10px;border-radius:999px;
   cursor:pointer;transition:.15s;
 }
-.sync-btn:hover:not(:disabled){background:rgba(255,255,255,.22)}
-.sync-btn:disabled{opacity:.6;cursor:wait}
+.sync-btn:hover{background:rgba(255,255,255,.16);color:#fff}
 
+/* Layout */
 main{max-width:860px;margin:-14px auto 0;padding:0 14px 16px}
 .card{
   background:var(--surface);border:1px solid var(--line);
@@ -76,6 +77,7 @@ main{max-width:860px;margin:-14px auto 0;padding:0 14px 16px}
   box-shadow:var(--shadow);
 }
 
+/* Date & Drafts bar */
 .meta-grid{display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:12px}
 .date-box{display:flex;align-items:center;gap:12px}
 .date-box label{font-size:12px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:var(--muted)}
@@ -100,6 +102,7 @@ input[type=date]:focus{border-color:var(--accent);box-shadow:0 0 0 3px rgba(37,9
 .draft-chip:hover{border-color:#94a3b8}
 .draft-chip.active{border-color:var(--accent);background:var(--accent-soft);color:var(--accent)}
 
+/* Trend KPI Cards */
 .kpi-grid{
   display:grid;
   grid-template-columns:repeat(2,minmax(0,1fr));
@@ -124,6 +127,7 @@ input[type=date]:focus{border-color:var(--accent);box-shadow:0 0 0 3px rgba(37,9
 .trend.flat{background:var(--surface-2);color:var(--muted);border:1px solid var(--line)}
 .kpi-sub{font-size:11px;color:var(--muted)}
 
+/* Sections & Tables */
 .section-head{display:flex;justify-content:space-between;align-items:center;gap:12px;margin-bottom:14px}
 .section-title{display:flex;align-items:center;gap:12px}
 .symbol{
@@ -171,6 +175,7 @@ td:last-child{border-right:1px solid #edf2f7;border-radius:0 14px 14px 0}
 .delta-pill.down{background:var(--green-soft);color:var(--green)}
 .delta-pill.flat{background:#e2e8f0;color:#475569}
 
+/* Gas card */
 .gas-box{
   display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:14px;
   background:var(--surface-2);border:1px solid #edf2f7;border-radius:14px;padding:12px 14px;
@@ -178,6 +183,7 @@ td:last-child{border-right:1px solid #edf2f7;border-radius:0 14px 14px 0}
 .gas-label{font-size:13px;font-weight:700;color:var(--ink)}
 .gas-sub{font-size:12px;color:var(--muted)}
 
+/* Actions & Bottom bar */
 .actions{display:flex;flex-wrap:wrap;gap:10px;margin-top:6px}
 .btn{
   border:0;border-radius:14px;padding:12px 16px;font-size:14px;font-weight:700;
@@ -215,11 +221,11 @@ td:last-child{border-right:1px solid #edf2f7;border-radius:0 14px 14px 0}
       <div>
         <div class="eyebrow">ul. Sucha · M1–M5</div>
         <h1>Liczniki Sucha</h1>
-        <p class="sub">Szkice zapisują się lokalnie · zużycie porównywane z historią arkusza.</p>
+        <p class="sub">Szkice zapisują się lokalnie — możesz wyjść z apki i wrócić później.</p>
       </div>
       <div class="header-badges">
         <div class="pill" id="savedCount">0 w szkicu</div>
-        <button class="sync-btn" id="syncHistoryBtn" type="button">↻ Odśwież historię</button>
+        <button class="sync-btn" id="syncHistoryBtn" type="button" title="Pobierz historię z arkusza">↻ Odśwież historię</button>
       </div>
     </div>
   </div>
@@ -237,6 +243,7 @@ td:last-child{border-right:1px solid #edf2f7;border-radius:0 14px 14px 0}
     <div class="drafts-bar" id="draftsBar"></div>
   </section>
 
+  <!-- Podsumowanie zużycia i trendu vs poprzedni miesiąc -->
   <section class="kpi-grid" id="trendKpis" aria-label="Porównanie zużycia z poprzednim okresem"></section>
 
   <section class="card">
@@ -261,7 +268,7 @@ td:last-child{border-right:1px solid #edf2f7;border-radius:0 14px 14px 0}
         <div class="symbol">💧</div>
         <div>
           <h2>Woda</h2>
-          <p>Zimna i ciepła woda · różnica i trend vs poprz. zużycie</p>
+          <p>Zimna i ciepła woda · różnica i trend vs poprz. odczyt</p>
         </div>
       </div>
     </div>
@@ -314,7 +321,7 @@ const DB_NAME = 'licznikiDB2';
 const STORE_READINGS = 'readings';
 const STORE_HISTORY = 'historyCache';
 
-let db, saveQueue = Promise.resolve(), historyRows = [], historyConsumptions = [];
+let db, saveQueue = Promise.resolve(), historyRows = [];
 const $ = id => document.getElementById(id);
 
 function todayISO(){
@@ -415,15 +422,10 @@ function clearDate(date){
     }catch(e){ reject(e); }
   });
 }
-function saveHistoryCache(readingsItems, consumptionsItems){
+function saveHistoryCache(items){
   return new Promise((resolve, reject) => {
     const tx = db.transaction(STORE_HISTORY, 'readwrite');
-    tx.objectStore(STORE_HISTORY).put({
-      id: 'latest',
-      items: readingsItems,
-      consumptions: consumptionsItems,
-      updatedAt: Date.now()
-    });
+    tx.objectStore(STORE_HISTORY).put({ id: 'latest', items, updatedAt: Date.now() });
     tx.oncomplete = resolve;
     tx.onerror = () => reject(tx.error);
   });
@@ -431,23 +433,16 @@ function saveHistoryCache(readingsItems, consumptionsItems){
 function loadHistoryCache(){
   return new Promise((resolve, reject) => {
     const r = db.transaction(STORE_HISTORY).objectStore(STORE_HISTORY).get('latest');
-    r.onsuccess = () => resolve({
-      readings: r.result?.items || [],
-      consumptions: r.result?.consumptions || []
-    });
+    r.onsuccess = () => resolve(r.result?.items || []);
     r.onerror = () => reject(r.error);
   });
 }
 
 async function fetchRemoteHistory(silent = false){
-  const btn = $('syncHistoryBtn');
-  if(btn){ btn.disabled = true; btn.textContent = '↻ Pobieranie…'; }
-  if(!silent) $('saveStatus').textContent = 'Pobieranie historii zużycia z arkusza…';
   try{
     const res = await fetch(`${APPS_SCRIPT_URL}?mode=history`, { cache: 'no-store' });
     if(!res.ok) throw new Error(`HTTP ${res.status}`);
-    const data = JSON.parse(await res.text());
-
+    const data = await res.json();
     if(Array.isArray(data.readings)){
       historyRows = data.readings.map(h => ({
         medium: String(h.medium ?? '').trim(),
@@ -455,25 +450,15 @@ async function fetchRemoteHistory(silent = false){
         date: normDateISO(h.date),
         reading: Number(h.reading)
       })).filter(h => h.medium && h.flat && /^\d{4}-\d{2}-\d{2}$/.test(h.date) && Number.isFinite(h.reading));
-    }
 
-    if(Array.isArray(data.consumptions)){
-      historyConsumptions = data.consumptions.map(c => ({
-        medium: String(c.medium ?? '').trim(),
-        flat: normFlat(c.flat),
-        date: normDateISO(c.date),
-        consumption: Number(c.consumption)
-      })).filter(c => c.medium && c.flat && /^\d{4}-\d{2}-\d{2}$/.test(c.date) && Number.isFinite(c.consumption) && c.consumption >= 0);
+      await saveHistoryCache(historyRows);
+      await refresh();
+      $('saveStatus').textContent = `Historia: ${historyRows.length} wpisów z arkusza.`;
+    }else{
+      $('saveStatus').textContent = 'Odpowiedź historii nie zawiera tablicy readings (sprawdź wdrożenie Apps Script).';
     }
-
-    await saveHistoryCache(historyRows, historyConsumptions);
-    await refresh();
-    const timeStr = new Date().toLocaleTimeString('pl-PL', { hour: '2-digit', minute: '2-digit' });
-    $('saveStatus').textContent = `Historia: ${historyConsumptions.length} zużycia z RACHUNKI, ${historyRows.length} odczytów (${timeStr}).`;
   }catch(err){
-    $('saveStatus').textContent = `Błąd odświeżania historii: ${err.message} (cache: ${historyConsumptions.length} zużycia).`;
-  }finally{
-    if(btn){ btn.disabled = false; btn.textContent = '↻ Odśwież historię'; }
+    $('saveStatus').textContent = `Brak historii z arkusza (${err.message}) — używam cache (${historyRows.length} wpisów).`;
   }
 }
 
@@ -492,30 +477,6 @@ function seriesBeforeDate(medium, flat, currentDate){
     .map(([date, reading]) => ({ date, reading }));
 }
 
-function latestConsumptionBeforeDate(medium, flat, currentDate){
-  const targetFlat = normFlat(flat);
-  const targetDate = normDateISO(currentDate);
-  const merged = new Map();
-  for(const c of historyConsumptions){
-    const cDate = normDateISO(c.date);
-    if(c.medium === medium && normFlat(c.flat) === targetFlat && cDate < targetDate && Number(c.consumption) >= 0){
-      merged.set(cDate, Number(c.consumption));
-    }
-  }
-  const sorted = Array.from(merged.entries()).sort((a,b) => a[0].localeCompare(b[0]));
-  if(sorted.length > 0){
-    const [date, consumption] = sorted[sorted.length - 1];
-    return { date, consumption };
-  }
-  // Fallback z dwóch wcześniejszych odczytów, jeśli brak w consumptions
-  const s = seriesBeforeDate(medium, flat, currentDate);
-  if(s.length >= 2){
-    const diff = +(s[s.length - 1].reading - s[s.length - 2].reading).toFixed(3);
-    if(diff >= 0) return { date: s[s.length - 1].date, consumption: diff };
-  }
-  return null;
-}
-
 function sameDateHistoryReading(medium, flat, currentDate){
   const targetFlat = normFlat(flat);
   const targetDate = normDateISO(currentDate);
@@ -530,7 +491,7 @@ function sameDateHistoryReading(medium, flat, currentDate){
 
 function calcTrendBadge(currCons, prevCons){
   if(currCons == null || prevCons == null || !Number.isFinite(currCons) || !Number.isFinite(prevCons)){
-    return { cls: 'flat', text: 'brak poprz. zużycia' };
+    return { cls: 'flat', text: 'brak poprz. okresu' };
   }
   const diff = +(currCons - prevCons).toFixed(3);
   if(Math.abs(diff) < 0.0005){
@@ -543,7 +504,6 @@ function calcTrendBadge(currCons, prevCons){
   }
   return { cls: diff > 0 ? 'up' : 'down', text: diff > 0 ? `↑ +${fmtNum(diff)}` : `↓ ${fmtNum(diff)}` };
 }
-
 function updateInputMeta(inp, draftMap){
   const date = $('date').value;
   const medium = inp.dataset.medium;
@@ -555,6 +515,55 @@ function updateInputMeta(inp, draftMap){
   const prev1 = series.length >= 1 ? series[series.length - 1] : null;
   const prevConsObj = latestConsumptionBeforeDate(medium, flat, date);
   const prevCons = prevConsObj ? prevConsObj.consumption : null;
+  const prevConsDate = prevConsObj ? prevConsObj.date : null;
+
+  const parsedDraft = parseNumber(inp.value);
+  const activeReading = (inp.value.trim() !== '' && parsedDraft !== null)
+    ? parsedDraft
+    : (draftMap?.get(key(date, medium, flat))?.reading ?? null);
+
+  inp.classList.toggle('invalid', inp.value.trim() !== '' && parsedDraft === null);
+
+  const parts = [];
+
+  if(prev1){
+    parts.push(`<span>Poprz. odczyt (${formatDate(prev1.date)}): <b>${fmtNum(prev1.reading, 3)}</b></span>`);
+  }
+
+  if(prevCons !== null){
+    const consDateLbl = prevConsDate ? ` (${formatDate(prevConsDate)})` : '';
+    parts.push(`<span>Poprz. zużycie${consDateLbl}: <b>${fmtNum(prevCons, 2)}</b></span>`);
+  }
+
+  if(prev1 && activeReading !== null){
+    const cons = +(activeReading - prev1.reading).toFixed(3);
+    if(cons < 0){
+      parts.push(`<span class="delta-pill up">mniejszy stan (${fmtNum(cons, 3)})</span>`);
+    }else{
+      parts.push(`<span>Zużycie: <b>${fmtNum(cons, 2)}</b></span>`);
+      if(prevCons !== null){
+        const b = calcTrendBadge(cons, prevCons);
+        parts.push(`<span class="delta-pill ${b.cls}">${b.text}</span>`);
+      }
+    }
+  }
+
+  if(!parts.length){
+    metaEl.innerHTML = `<span>Brak wcześniejszych danych przed ${formatDate(date)}</span>`;
+  }else{
+    metaEl.innerHTML = parts.join('<span>·</span>');
+  }
+}
+  const date = $('date').value;
+  const medium = inp.dataset.medium;
+  const flat = inp.dataset.flat;
+  const metaEl = document.getElementById(`meta-${medium}-${flat}`);
+  if(!metaEl) return;
+
+  const series = seriesBeforeDate(medium, flat, date);
+  const prev1 = series.length >= 1 ? series[series.length - 1] : null;
+  const prev2 = series.length >= 2 ? series[series.length - 2] : null;
+  const prevCons = (prev1 && prev2) ? +(prev1.reading - prev2.reading).toFixed(3) : null;
 
   const parsedDraft = parseNumber(inp.value);
   const activeReading = (inp.value.trim() !== '' && parsedDraft !== null)
@@ -565,13 +574,11 @@ function updateInputMeta(inp, draftMap){
 
   if(!prev1){
     const sameDay = sameDateHistoryReading(medium, flat, date);
-    let html = sameDay !== null
-      ? `<span>W arkuszu na ten dzień: <b>${fmtNum(sameDay, 3)}</b></span>`
-      : `<span>Brak wcześniejszego odczytu przed ${formatDate(date)}</span>`;
-    if(prevCons !== null){
-      html += `<span>· Poprz. zużycie: <b>${fmtNum(prevCons, 2)}</b></span>`;
+    if(sameDay !== null){
+      metaEl.innerHTML = `<span>W arkuszu na ten dzień: <b>${fmtNum(sameDay, 3)}</b></span>`;
+    }else{
+      metaEl.innerHTML = `<span>Brak wcześniejszego odczytu przed ${formatDate(date)}</span>`;
     }
-    metaEl.innerHTML = html;
     return;
   }
 
@@ -584,11 +591,11 @@ function updateInputMeta(inp, draftMap){
       html += `<span>Zużycie: <b>${fmtNum(cons, 2)}</b></span>`;
       if(prevCons !== null){
         const b = calcTrendBadge(cons, prevCons);
-        html += `<span class="delta-pill ${b.cls}">${b.text} (${fmtNum(prevCons, 2)})</span>`;
+        html += `<span class="delta-pill ${b.cls}">${b.text}</span>`;
+      }else{
+        html += `<span class="delta-pill flat">1. zużycie w bazie</span>`;
       }
     }
-  }else if(prevCons !== null){
-    html += `<span>· Poprz. zużycie: <b>${fmtNum(prevCons, 2)}</b></span>`;
   }
   metaEl.innerHTML = html;
 }
@@ -606,14 +613,13 @@ function renderKPIs(draftMap){
     let currTotal = 0, prevTotal = 0, hasCurr = false, hasPrev = false;
 
     for(const f of sp.flats){
-      const prevC = latestConsumptionBeforeDate(sp.medium, f, date);
-      if(prevC && prevC.consumption >= 0){
-        prevTotal += prevC.consumption;
-        hasPrev = true;
-      }
-
       const s = seriesBeforeDate(sp.medium, f, date);
       const r1 = s.length >= 1 ? s[s.length - 1] : null;
+      const r2 = s.length >= 2 ? s[s.length - 2] : null;
+      if(r1 && r2){
+        prevTotal += (r1.reading - r2.reading);
+        hasPrev = true;
+      }
       const draftVal = draftMap.get(key(date, sp.medium, f))?.reading;
       const inpEl = document.querySelector(`.reading[data-medium="${sp.medium}"][data-flat="${f}"]`);
       const liveVal = inpEl && inpEl.value.trim() !== '' ? parseNumber(inpEl.value) : draftVal;
@@ -624,10 +630,10 @@ function renderKPIs(draftMap){
     }
 
     const displayCons = hasCurr ? currTotal : (hasPrev ? prevTotal : null);
-    const labelMode = hasCurr ? 'bieżący szkic' : (hasPrev ? 'ostatnie zużycie z RACHUNKI' : 'brak danych');
+    const labelMode = hasCurr ? 'bieżący szkic' : (hasPrev ? 'poprzedni okres' : 'brak 2 wcześniejszych odczytów');
     const badge = (hasCurr && hasPrev)
       ? calcTrendBadge(currTotal, prevTotal)
-      : { cls: 'flat', text: hasPrev ? 'ostatni okres' : 'brak porównania' };
+      : { cls: 'flat', text: hasPrev ? 'ostatni zamknięty' : 'brak porównania' };
 
     return `
       <div class="kpi">
@@ -810,7 +816,7 @@ async function send(){
       else historyRows = historyRows.map(h => (`${h.date}|${h.medium}|${h.flat}` === k ? { ...h, reading: r.reading } : h));
       await removeReading(r.id);
     }
-    await saveHistoryCache(historyRows, historyConsumptions);
+    await saveHistoryCache(historyRows);
     await refresh();
     $('saveStatus').textContent = 'Wysłano do arkusza i wyczyszczono szkic dla tej daty.';
     alert(message);
@@ -861,9 +867,7 @@ $('clearDateBtn').addEventListener('click', async () => {
   render();
   $('date').value = todayISO();
   await openDB();
-  const cached = await loadHistoryCache();
-  historyRows = cached.readings;
-  historyConsumptions = cached.consumptions;
+  historyRows = await loadHistoryCache();
   await refresh();
   fetchRemoteHistory(true);
 })().catch(e => alert('Nie udało się uruchomić aplikacji: ' + e.message));
