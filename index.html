@@ -3,84 +3,724 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
-<meta name="theme-color" content="#101827">
+<meta name="theme-color" content="#0b1120">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-title" content="Liczniki Sucha">
 <link rel="manifest" href="manifest.json">
 <title>Liczniki Sucha</title>
 <style>
-:root{color-scheme:light;--ink:#172033;--muted:#778196;--line:#e7ebf2;--bg:#f4f6fa;--blue:#315efb;--blue2:#eaf0ff;--green:#16845b;--white:#fff}
-*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--ink);font:15px/1.45 -apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;padding:0 0 calc(100px + env(safe-area-inset-bottom))}
-header{background:#101827;color:#fff;padding:24px 20px 26px;border-radius:0 0 24px 24px}
-.topline{display:flex;justify-content:space-between;align-items:center;gap:12px}.eyebrow{font-size:11px;text-transform:uppercase;letter-spacing:.14em;color:#aab5ca;font-weight:700}
-h1{font-size:25px;letter-spacing:-.04em;margin:5px 0 2px}.sub{color:#b9c3d4;font-size:13px}
-main{max-width:760px;margin:0 auto;padding:18px 14px}.date-card,.panel{background:var(--white);border:1px solid var(--line);border-radius:18px;padding:16px;margin-bottom:14px;box-shadow:0 5px 18px #1c2b4510}
-.date-row{display:flex;align-items:center;justify-content:space-between;gap:12px}label{font-size:13px;font-weight:700;color:#586277}input[type=date]{border:1px solid var(--line);background:#f8f9fc;border-radius:11px;padding:10px 12px;font:600 15px inherit;color:var(--ink)}
-.section-head{display:flex;justify-content:space-between;align-items:center;margin-bottom:12px}.section-title{display:flex;align-items:center;gap:10px}.symbol{width:36px;height:36px;border-radius:12px;background:var(--blue2);display:grid;place-items:center;color:var(--blue);font-size:18px}.section-head h2{font-size:17px;margin:0;letter-spacing:-.02em}.section-head p{font-size:12px;color:var(--muted);margin:1px 0 0}
-table{width:100%;border-collapse:separate;border-spacing:0 7px}th{text-align:right;color:#8992a4;font-size:11px;text-transform:uppercase;letter-spacing:.07em;font-weight:700;padding:0 8px 2px}th:first-child{text-align:left;padding-left:4px}td{padding:5px 6px;text-align:right;background:#f7f8fb}td:first-child{text-align:left;border-radius:10px 0 0 10px;width:62px;font-weight:750;padding-left:12px}td:last-child{border-radius:0 10px 10px 0}
-.reading{width:100%;min-width:0;border:1px solid #e2e7f0;background:#fff;border-radius:9px;padding:10px 8px;text-align:right;font:600 17px ui-monospace,SFMono-Regular,Menlo,monospace;color:var(--ink);outline:none}
-.reading:focus{border-color:var(--blue);box-shadow:0 0 0 3px #315efb20}.reading::placeholder{color:#c1c8d4}
-.gas-row{display:flex;align-items:center;gap:12px}.gas-row label{flex:1}.gas-row .reading{max-width:220px}
-.hint{font-size:12px;color:var(--muted);margin:10px 2px 0}.status{font-size:12px;color:var(--muted);margin-top:8px}
-.actions{display:flex;gap:9px;margin-top:14px}.btn{border:0;border-radius:12px;padding:12px 14px;font-size:14px;font-weight:750;cursor:pointer}.btn:disabled{opacity:.55;cursor:wait}.btn-light{background:#eef1f6;color:#344056}.btn-blue{background:var(--blue);color:white}.btn-green{background:var(--green);color:white}
-.bottom{position:fixed;bottom:0;left:0;right:0;background:#ffffffed;backdrop-filter:blur(14px);border-top:1px solid var(--line);padding:12px 14px calc(12px + env(safe-area-inset-bottom));z-index:5}.bottom-inner{max-width:732px;margin:auto;display:flex;gap:10px}.bottom .btn{flex:1;padding:15px 10px;font-size:15px}
-.count{font-size:12px;color:#d8e1f4;background:#ffffff18;padding:6px 9px;border-radius:20px;white-space:nowrap}
-@media(min-width:600px){main{padding:22px 20px}.panel,.date-card{padding:20px}.reading{max-width:190px}td:first-child{width:100px}}
+:root{
+  color-scheme:light;
+  --bg:#f1f5f9;
+  --surface:#ffffff;
+  --surface-2:#f8fafc;
+  --ink:#0f172a;
+  --muted:#64748b;
+  --line:#e2e8f0;
+  --navy:#0b1120;
+  --navy-2:#1e293b;
+  --accent:#2563eb;
+  --accent-soft:#eff6ff;
+  --green:#059669;
+  --green-soft:#ecfdf5;
+  --red:#dc2626;
+  --red-soft:#fef2f2;
+  --amber:#d97706;
+  --amber-soft:#fffbeb;
+  --radius:20px;
+  --shadow:0 10px 25px -5px rgba(15,23,42,.06), 0 4px 10px -6px rgba(15,23,42,.04);
+}
+*{box-sizing:border-box}
+body{
+  margin:0;
+  background:var(--bg);
+  color:var(--ink);
+  font:15px/1.45 -apple-system,BlinkMacSystemFont,"Inter","Segoe UI",Roboto,sans-serif;
+  padding:0 0 calc(104px + env(safe-area-inset-bottom));
+  -webkit-font-smoothing:antialiased;
+}
+
+/* Header */
+header{
+  background:linear-gradient(160deg, var(--navy) 0%, #172554 100%);
+  color:#fff;
+  padding:22px 18px 28px;
+  border-radius:0 0 28px 28px;
+  box-shadow:0 12px 30px -10px rgba(11,17,32,.35);
+}
+.header-inner{max-width:860px;margin:0 auto}
+.topline{display:flex;justify-content:space-between;align-items:flex-start;gap:12px}
+.eyebrow{
+  display:inline-flex;align-items:center;gap:6px;
+  font-size:11px;text-transform:uppercase;letter-spacing:.12em;
+  color:#93c5fd;font-weight:700;
+}
+h1{font-size:26px;letter-spacing:-.03em;margin:6px 0 3px;font-weight:800}
+.sub{color:#cbd5e1;font-size:13px;margin:0}
+.header-badges{display:flex;flex-direction:column;align-items:flex-end;gap:6px}
+.pill{
+  font-size:12px;font-weight:600;color:#e2e8f0;
+  background:rgba(255,255,255,.1);border:1px solid rgba(255,255,255,.14);
+  padding:6px 11px;border-radius:999px;white-space:nowrap;backdrop-filter:blur(8px);
+}
+.sync-btn{
+  background:rgba(255,255,255,.08);border:1px solid rgba(255,255,255,.16);
+  color:#bfdbfe;font-size:11px;font-weight:600;padding:5px 10px;border-radius:999px;
+  cursor:pointer;transition:.15s;
+}
+.sync-btn:hover{background:rgba(255,255,255,.16);color:#fff}
+
+/* Layout */
+main{max-width:860px;margin:-14px auto 0;padding:0 14px 16px}
+.card{
+  background:var(--surface);border:1px solid var(--line);
+  border-radius:var(--radius);padding:18px;margin-bottom:14px;
+  box-shadow:var(--shadow);
+}
+
+/* Date & Meta bar */
+.meta-grid{display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:12px}
+.date-box{display:flex;align-items:center;gap:12px}
+.date-box label{font-size:12px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:var(--muted)}
+input[type=date]{
+  border:1px solid var(--line);background:var(--surface-2);
+  border-radius:12px;padding:10px 12px;font:600 15px inherit;color:var(--ink);
+  outline:none;transition:.15s;
+}
+input[type=date]:focus{border-color:var(--accent);box-shadow:0 0 0 3px rgba(37,99,235,.15)}
+.status{font-size:12.5px;color:var(--muted)}
+
+/* Trend KPI Cards */
+.kpi-grid{
+  display:grid;
+  grid-template-columns:repeat(2,minmax(0,1fr));
+  gap:10px;
+  margin-bottom:14px;
+}
+@media(min-width:680px){.kpi-grid{grid-template-columns:repeat(4,minmax(0,1fr));gap:12px}}
+.kpi{
+  background:var(--surface);border:1px solid var(--line);border-radius:18px;
+  padding:14px;box-shadow:var(--shadow);display:flex;flex-direction:column;justify-content:space-between;gap:8px;
+}
+.kpi-top{display:flex;justify-content:space-between;align-items:center;gap:6px}
+.kpi-title{font-size:12px;font-weight:700;color:var(--muted)}
+.kpi-val{font-size:20px;font-weight:800;letter-spacing:-.02em;font-variant-numeric:tabular-nums}
+.kpi-unit{font-size:12px;font-weight:600;color:var(--muted)}
+.trend{
+  display:inline-flex;align-items:center;gap:4px;
+  font-size:11.5px;font-weight:700;padding:3px 8px;border-radius:999px;width:fit-content;
+}
+.trend.up{background:var(--red-soft);color:var(--red)}
+.trend.down{background:var(--green-soft);color:var(--green)}
+.trend.flat{background:var(--surface-2);color:var(--muted);border:1px solid var(--line)}
+.kpi-sub{font-size:11px;color:var(--muted)}
+
+/* Sections & Tables */
+.section-head{display:flex;justify-content:space-between;align-items:center;gap:12px;margin-bottom:14px}
+.section-title{display:flex;align-items:center;gap:12px}
+.symbol{
+  width:40px;height:40px;border-radius:14px;
+  background:var(--accent-soft);color:var(--accent);
+  display:grid;place-items:center;font-size:18px;font-weight:700;flex-shrink:0;
+}
+.section-head h2{font-size:17px;margin:0;letter-spacing:-.02em;font-weight:750}
+.section-head p{font-size:12.5px;color:var(--muted);margin:2px 0 0}
+
+table{width:100%;border-collapse:separate;border-spacing:0 8px}
+th{
+  text-align:right;color:var(--muted);font-size:11px;text-transform:uppercase;
+  letter-spacing:.07em;font-weight:700;padding:0 8px 2px;
+}
+th:first-child{text-align:left;padding-left:6px}
+td{
+  padding:8px 8px;text-align:right;background:var(--surface-2);
+  border-top:1px solid #edf2f7;border-bottom:1px solid #edf2f7;vertical-align:middle;
+}
+td:first-child{
+  text-align:left;border-left:1px solid #edf2f7;
+  border-radius:14px 0 0 14px;width:68px;font-weight:800;padding-left:14px;color:var(--ink);
+}
+td:last-child{border-right:1px solid #edf2f7;border-radius:0 14px 14px 0}
+
+.cell-wrap{display:flex;flex-direction:column;align-items:flex-end;gap:4px}
+.reading{
+  width:100%;max-width:175px;
+  border:1px solid #cbd5e1;background:#fff;border-radius:11px;
+  padding:9px 10px;text-align:right;
+  font:700 16px ui-monospace,SFMono-Regular,Menlo,monospace;color:var(--ink);
+  outline:none;transition:.15s;
+}
+.reading:focus{border-color:var(--accent);box-shadow:0 0 0 3px rgba(37,99,235,.15)}
+.reading::placeholder{color:#cbd5e1}
+.reading.invalid{border-color:var(--red);background:#fff5f5}
+
+.meta-line{
+  display:flex;flex-wrap:wrap;justify-content:flex-end;align-items:center;gap:6px;
+  font-size:11px;color:var(--muted);min-height:18px;
+}
+.delta-pill{font-weight:700;padding:1px 6px;border-radius:6px}
+.delta-pill.up{background:var(--red-soft);color:var(--red)}
+.delta-pill.down{background:var(--green-soft);color:var(--green)}
+.delta-pill.flat{background:#e2e8f0;color:#475569}
+
+/* Gas card */
+.gas-box{
+  display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:14px;
+  background:var(--surface-2);border:1px solid #edf2f7;border-radius:14px;padding:12px 14px;
+}
+.gas-label{font-size:13px;font-weight:700;color:var(--ink)}
+.gas-sub{font-size:12px;color:var(--muted)}
+
+/* Actions & Bottom bar */
+.actions{display:flex;flex-wrap:wrap;gap:10px;margin-top:6px}
+.btn{
+  border:0;border-radius:14px;padding:12px 16px;font-size:14px;font-weight:700;
+  cursor:pointer;transition:.15s;display:inline-flex;align-items:center;justify-content:center;gap:8px;
+}
+.btn:active{transform:scale(.99)}
+.btn:disabled{opacity:.55;cursor:wait}
+.btn-light{background:#e2e8f0;color:#1e293b}
+.btn-light:hover{background:#cbd5e1}
+.btn-green{background:var(--green);color:#fff;box-shadow:0 8px 20px -6px rgba(5,150,105,.45)}
+.btn-green:hover{background:#047857}
+
+.bottom{
+  position:fixed;bottom:0;left:0;right:0;
+  background:rgba(255,255,255,.9);backdrop-filter:blur(16px);
+  border-top:1px solid var(--line);
+  padding:12px 14px calc(12px + env(safe-area-inset-bottom));z-index:10;
+}
+.bottom-inner{max-width:832px;margin:0 auto;display:flex;gap:10px}
+.bottom .btn{flex:1;padding:15px 14px;font-size:15px}
+
+@media(max-width:540px){
+  .reading{max-width:126px;font-size:15px;padding:8px}
+  td:first-child{width:54px;padding-left:10px}
+  th,td{padding-left:5px;padding-right:5px}
+}
 </style>
 </head>
 <body>
-<header><div class="topline"><div><div class="eyebrow">Panel odczytów</div><h1>Liczniki Sucha</h1><div class="sub">Wprowadź odczyty dla wszystkich mieszkań w jednym widoku.</div></div><div class="count" id="savedCount">0 zapisanych</div></div></header>
+<header>
+  <div class="header-inner">
+    <div class="topline">
+      <div>
+        <div class="eyebrow">ul. Sucha · M1–M5</div>
+        <h1>Liczniki Sucha</h1>
+        <p class="sub">Odczyty, zużycie i porównanie z poprzednim miesiącem.</p>
+      </div>
+      <div class="header-badges">
+        <div class="pill" id="savedCount">0 zapisanych</div>
+        <button class="sync-btn" id="syncHistoryBtn" type="button" title="Pobierz historię z arkusza">↻ Odśwież historię</button>
+      </div>
+    </div>
+  </div>
+</header>
+
 <main>
-  <section class="date-card"><div class="date-row"><label for="date">DATA ODCZYTU</label><input type="date" id="date"></div><div class="status" id="saveStatus">Dane zapisują się automatycznie na tym urządzeniu.</div></section>
-
-  <section class="panel">
-    <div class="section-head"><div class="section-title"><div class="symbol">ϟ</div><div><h2>Energia elektryczna</h2><p>Jeden odczyt dla każdego mieszkania</p></div></div></div>
-    <table><thead><tr><th>Mieszkanie</th><th>Stan licznika</th></tr></thead><tbody id="electricityRows"></tbody></table>
+  <section class="card">
+    <div class="meta-grid">
+      <div class="date-box">
+        <label for="date">Data odczytu</label>
+        <input type="date" id="date">
+      </div>
+      <div class="status" id="saveStatus">Dane zapisują się automatycznie na tym urządzeniu.</div>
+    </div>
   </section>
 
-  <section class="panel">
-    <div class="section-head"><div class="section-title"><div class="symbol">◉</div><div><h2>Woda</h2><p>Zimna i ciepła — osobno dla każdego mieszkania</p></div></div></div>
-    <table><thead><tr><th>Mieszkanie</th><th>Zimna woda</th><th>Ciepła woda</th></tr></thead><tbody id="waterRows"></tbody></table>
+  <!-- Podsumowanie zużycia i trendu vs poprzedni miesiąc -->
+  <section class="kpi-grid" id="trendKpis" aria-label="Porównanie zużycia z poprzednim okresem"></section>
+
+  <section class="card">
+    <div class="section-head">
+      <div class="section-title">
+        <div class="symbol">⚡</div>
+        <div>
+          <h2>Energia elektryczna</h2>
+          <p>Jeden licznik na mieszkanie · porównanie zużycia m/m</p>
+        </div>
+      </div>
+    </div>
+    <table>
+      <thead><tr><th>Lokal</th><th>Stan licznika / zużycie</th></tr></thead>
+      <tbody id="electricityRows"></tbody>
+    </table>
   </section>
 
-  <section class="panel">
-    <div class="section-head"><div class="section-title"><div class="symbol">♨</div><div><h2>Gaz</h2><p>Wspólny licznik budynku</p></div></div></div>
-    <div class="gas-row"><label for="gas">WSPÓLNY LICZNIK</label><input class="reading" id="gas" type="text" inputmode="decimal" placeholder="—" autocomplete="off" data-medium="Gaz" data-flat="wspólny"></div>
-    <div class="hint">Pola, których nie odczytano, można zostawić puste.</div>
+  <section class="card">
+    <div class="section-head">
+      <div class="section-title">
+        <div class="symbol">💧</div>
+        <div>
+          <h2>Woda</h2>
+          <p>Zimna i ciepła woda · różnica i trend vs poprz. odczyt</p>
+        </div>
+      </div>
+    </div>
+    <table>
+      <thead><tr><th>Lokal</th><th>Zimna woda</th><th>Ciepła woda</th></tr></thead>
+      <tbody id="waterRows"></tbody>
+    </table>
   </section>
 
-  <div class="actions"><button class="btn btn-light" id="exportBtn" type="button">Eksport CSV</button><button class="btn btn-light" id="clearDateBtn" type="button">Wyczyść tę datę</button></div>
+  <section class="card">
+    <div class="section-head">
+      <div class="section-title">
+        <div class="symbol">🔥</div>
+        <div>
+          <h2>Gaz</h2>
+          <p>Wspólny licznik budynku</p>
+        </div>
+      </div>
+    </div>
+    <div class="gas-box">
+      <div>
+        <div class="gas-label">Wspólny licznik gazu</div>
+        <div class="gas-sub">Pola nieodczytane możesz zostawić puste.</div>
+      </div>
+      <div class="cell-wrap">
+        <input class="reading" id="gas" type="text" inputmode="decimal" placeholder="—" autocomplete="off" data-medium="Gaz" data-flat="wspólny">
+        <div class="meta-line" id="meta-Gaz-wspólny"></div>
+      </div>
+    </div>
+  </section>
+
+  <div class="actions">
+    <button class="btn btn-light" id="exportBtn" type="button">Eksport CSV</button>
+    <button class="btn btn-light" id="clearDateBtn" type="button">Wyczyść tę datę</button>
+  </div>
 </main>
-<div class="bottom"><div class="bottom-inner"><button class="btn btn-green" id="sendBtn" type="button">Wyślij odczyty do arkusza</button></div></div>
+
+<div class="bottom">
+  <div class="bottom-inner">
+    <button class="btn btn-green" id="sendBtn" type="button">Wyślij odczyty do arkusza</button>
+  </div>
+</div>
+
 <script>
 const APPS_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbzi2Jw5W_4rXo-QTBV5f7PSMbw5dPeez5dxBbF7hiJiBXJ_Eihu_zqcpPopWxfw3517/exec';
-const FLATS=['1','2','3','4','5'], MEDIA_ORDER=['Prąd','Zimna woda','Gorąca woda','Gaz'];
-const DB_NAME='licznikiDB2', STORE='readings';
-let db, saveQueue=Promise.resolve();
-const $=id=>document.getElementById(id);
-function todayISO(){const d=new Date(),local=new Date(d.getTime()-d.getTimezoneOffset()*60000);return local.toISOString().slice(0,10)}
-function formatDate(iso){const [y,m,d]=iso.split('-');return `${d}.${m}.${y}`}
-function parseNumber(v){if(v===''||v==null)return null;const s=String(v).trim().replace(',','.');if(!/^\d+(\.\d{0,3})?$/.test(s))return null;const n=Number(s);return Number.isFinite(n)?n:null}
-function formatReading(v){return v==null?'':Number(v).toFixed(3).replace('.',',')}
-function displayFlat(f){return f==='wspólny'?'wspólny licznik':'M'+f}
-function key(date,medium,flat){return `${date}|${medium}|${flat}`}
-function openDB(){return new Promise((resolve,reject)=>{const req=indexedDB.open(DB_NAME,1);req.onupgradeneeded=e=>{const s=e.target.result.createObjectStore(STORE,{keyPath:'id',autoIncrement:true});s.createIndex('sessionKey','sessionKey',{unique:false});s.createIndex('date','date')};req.onsuccess=e=>{db=e.target.result;resolve()};req.onerror=e=>reject(e.target.error)})}
-function allReadings(){return new Promise((resolve,reject)=>{const r=db.transaction(STORE).objectStore(STORE).getAll();r.onsuccess=()=>resolve(r.result);r.onerror=()=>reject(r.error)})}
-function findKey(k){return new Promise((resolve,reject)=>{const r=db.transaction(STORE).objectStore(STORE).index('sessionKey').get(k);r.onsuccess=()=>resolve(r.result);r.onerror=()=>reject(r.error)})}
-function put(r){return new Promise((resolve,reject)=>{const tx=db.transaction(STORE,'readwrite');tx.objectStore(STORE).put(r);tx.oncomplete=resolve;tx.onerror=()=>reject(tx.error)})}
-function remove(id){return new Promise((resolve,reject)=>{const tx=db.transaction(STORE,'readwrite');tx.objectStore(STORE).delete(id);tx.oncomplete=resolve;tx.onerror=()=>reject(tx.error)})}
-function clearDate(date){return new Promise(async(resolve,reject)=>{try{const rows=(await allReadings()).filter(r=>r.date===date);const tx=db.transaction(STORE,'readwrite'),s=tx.objectStore(STORE);rows.forEach(r=>s.delete(r.id));tx.oncomplete=resolve;tx.onerror=()=>reject(tx.error)}catch(e){reject(e)}})}
-function render(){const e=$('electricityRows'),w=$('waterRows');e.innerHTML=FLATS.map(f=>`<tr><td>M${f}</td><td><input class="reading" type="text" inputmode="decimal" placeholder="—" data-medium="Prąd" data-flat="${f}" aria-label="Prąd M${f}"></td></tr>`).join('');w.innerHTML=FLATS.map(f=>`<tr><td>M${f}</td><td><input class="reading" type="text" inputmode="decimal" placeholder="—" data-medium="Zimna woda" data-flat="${f}" aria-label="Zimna woda M${f}"></td><td><input class="reading" type="text" inputmode="decimal" placeholder="—" data-medium="Gorąca woda" data-flat="${f}" aria-label="Gorąca woda M${f}"></td></tr>`).join('')}
-async function refresh(){await saveQueue;const date=$('date').value,rows=(await allReadings()).filter(r=>r.date===date),map=new Map(rows.map(r=>[r.sessionKey,r]));document.querySelectorAll('.reading').forEach(inp=>{const r=map.get(key(date,inp.dataset.medium,inp.dataset.flat));inp.value=r?formatReading(r.reading):''});$('savedCount').textContent=`${rows.length} zapisanych`; }
-function saveInput(inp){const date=$('date').value,medium=inp.dataset.medium,flat=inp.dataset.flat,raw=inp.value;saveQueue=saveQueue.then(async()=>{const k=key(date,medium,flat),old=await findKey(k),v=raw.trim();if(!v){if(old)await remove(old.id)}else{const n=parseNumber(v);if(n===null){$('saveStatus').textContent='Nieprawidłowy format. Użyj maksymalnie 3 miejsc po przecinku.';return}await put({id:old?.id,sessionKey:k,date,medium,flat,reading:n,note:old?.note||'',createdAt:old?.createdAt||new Date().toISOString()})}$('saveStatus').textContent='Zapisano automatycznie na tym urządzeniu.';const rows=(await allReadings()).filter(r=>r.date===date);$('savedCount').textContent=`${rows.length} zapisanych`}).catch(err=>{$('saveStatus').textContent='Błąd zapisu: '+err.message})}
-function sorted(rows){return rows.sort((a,b)=>MEDIA_ORDER.indexOf(a.medium)-MEDIA_ORDER.indexOf(b.medium)||String(a.flat).localeCompare(String(b.flat),'pl',{numeric:true}))}
-function csvFor(rows){const q=v=>'"'+String(v??'').replace(/"/g,'""')+'"';return [['Medium','Mieszkanie','Data','Odczyt','Notatka'],...sorted(rows).map(r=>[r.medium,displayFlat(r.flat),formatDate(r.date),String(r.reading).replace('.',','),r.note||''])].map(row=>row.map(q).join(',')).join('\r\n')}
-async function exportCSV(){await saveQueue;const date=$('date').value,rows=(await allReadings()).filter(r=>r.date===date);if(!rows.length){alert('Brak odczytów dla wybranej daty.');return}const blob=new Blob(['\ufeff'+csvFor(rows)],{type:'text/csv;charset=utf-8'}),url=URL.createObjectURL(blob),a=document.createElement('a');a.href=url;a.download=`liczniki_${date}.csv`;a.click();URL.revokeObjectURL(url)}
-async function send(){await saveQueue;const date=$('date').value,rows=sorted((await allReadings()).filter(r=>r.date===date));if(!rows.length){alert('Brak odczytów dla wybranej daty.');return}if(rows.some(r=>!Number.isFinite(r.reading))){alert('W danych jest nieprawidłowy odczyt.');return}if(!confirm(`Wysłać ${rows.length} odczytów z dnia ${formatDate(date)} do arkusza?`))return;const btn=$('sendBtn');btn.disabled=true;btn.textContent='Wysyłanie…';const csv=csvFor(rows);try{const response=await fetch(APPS_SCRIPT_URL,{method:'POST',headers:{'Content-Type':'text/plain;charset=utf-8'},body:csv});const message=await response.text();if(!response.ok||!message.startsWith('OK'))throw new Error(message||`HTTP ${response.status}`);for(const r of rows)await remove(r.id);await refresh();alert(message)}catch(err){alert('Nie potwierdzono poprawnej wysyłki. Dane pozostają zapisane na urządzeniu.\\n\\n'+err.message)}finally{btn.disabled=false;btn.textContent='Wyślij odczyty do arkusza'}}
-document.addEventListener('input',e=>{if(e.target.matches('.reading'))saveInput(e.target)});
-$('date').addEventListener('change',refresh);$('sendBtn').addEventListener('click',send);$('exportBtn').addEventListener('click',exportCSV);
-$('clearDateBtn').addEventListener('click',async()=>{const d=$('date').value;if(!confirm(`Usunąć lokalne odczyty z dnia ${formatDate(d)}?`))return;await saveQueue;await clearDate(d);await refresh()});
-(async()=>{render();$('date').value=todayISO();await openDB();await refresh()})().catch(e=>alert('Nie udało się uruchomić aplikacji: '+e.message));
-if('serviceWorker'in navigator)navigator.serviceWorker.register('./sw.js').catch(console.warn);
+const FLATS = ['1','2','3','4','5'];
+const MEDIA_ORDER = ['Prąd','Zimna woda','Gorąca woda','Gaz'];
+const DB_NAME = 'licznikiDB2';
+const STORE_READINGS = 'readings';
+const STORE_HISTORY = 'historyCache';
+
+let db, saveQueue = Promise.resolve(), historyRows = [];
+const $ = id => document.getElementById(id);
+
+function todayISO(){
+  const d = new Date(), local = new Date(d.getTime() - d.getTimezoneOffset()*60000);
+  return local.toISOString().slice(0,10);
+}
+function formatDate(iso){
+  const [y,m,d] = (iso || '').split('-');
+  return (y && m && d) ? `${d}.${m}.${y}` : iso;
+}
+function parseNumber(v){
+  if(v === '' || v == null) return null;
+  const s = String(v).trim().replace(',', '.');
+  if(!/^\d+(\.\d{0,3})?$/.test(s)) return null;
+  const n = Number(s);
+  return Number.isFinite(n) ? n : null;
+}
+function formatReading(v){
+  return v == null ? '' : Number(v).toFixed(3).replace('.', ',');
+}
+function fmtNum(n, dec = 2){
+  return Number(n).toLocaleString('pl-PL', { minimumFractionDigits: 0, maximumFractionDigits: dec });
+}
+function displayFlat(f){ return f === 'wspólny' ? 'wspólny licznik' : 'M' + f; }
+function key(date, medium, flat){ return `${date}|${medium}|${flat}`; }
+
+function openDB(){
+  return new Promise((resolve, reject) => {
+    const req = indexedDB.open(DB_NAME, 2);
+    req.onupgradeneeded = e => {
+      const database = e.target.result;
+      if(!database.objectStoreNames.contains(STORE_READINGS)){
+        const s = database.createObjectStore(STORE_READINGS, { keyPath: 'id', autoIncrement: true });
+        s.createIndex('sessionKey', 'sessionKey', { unique: false });
+        s.createIndex('date', 'date');
+      }
+      if(!database.objectStoreNames.contains(STORE_HISTORY)){
+        database.createObjectStore(STORE_HISTORY, { keyPath: 'id' });
+      }
+    };
+    req.onsuccess = e => { db = e.target.result; resolve(); };
+    req.onerror = e => reject(e.target.error);
+  });
+}
+
+function allReadings(){
+  return new Promise((resolve, reject) => {
+    const r = db.transaction(STORE_READINGS).objectStore(STORE_READINGS).getAll();
+    r.onsuccess = () => resolve(r.result);
+    r.onerror = () => reject(r.error);
+  });
+}
+function findKey(k){
+  return new Promise((resolve, reject) => {
+    const r = db.transaction(STORE_READINGS).objectStore(STORE_READINGS).index('sessionKey').get(k);
+    r.onsuccess = () => resolve(r.result);
+    r.onerror = () => reject(r.error);
+  });
+}
+function putReading(rec){
+  return new Promise((resolve, reject) => {
+    const tx = db.transaction(STORE_READINGS, 'readwrite');
+    tx.objectStore(STORE_READINGS).put(rec);
+    tx.oncomplete = resolve;
+    tx.onerror = () => reject(tx.error);
+  });
+}
+function removeReading(id){
+  return new Promise((resolve, reject) => {
+    const tx = db.transaction(STORE_READINGS, 'readwrite');
+    tx.objectStore(STORE_READINGS).delete(id);
+    tx.oncomplete = resolve;
+    tx.onerror = () => reject(tx.error);
+  });
+}
+function clearDate(date){
+  return new Promise(async (resolve, reject) => {
+    try{
+      const rows = (await allReadings()).filter(r => r.date === date);
+      const tx = db.transaction(STORE_READINGS, 'readwrite');
+      const s = tx.objectStore(STORE_READINGS);
+      rows.forEach(r => s.delete(r.id));
+      tx.oncomplete = resolve;
+      tx.onerror = () => reject(tx.error);
+    }catch(e){ reject(e); }
+  });
+}
+function saveHistoryCache(items){
+  return new Promise((resolve, reject) => {
+    const tx = db.transaction(STORE_HISTORY, 'readwrite');
+    tx.objectStore(STORE_HISTORY).put({ id: 'latest', items, updatedAt: Date.now() });
+    tx.oncomplete = resolve;
+    tx.onerror = () => reject(tx.error);
+  });
+}
+function loadHistoryCache(){
+  return new Promise((resolve, reject) => {
+    const r = db.transaction(STORE_HISTORY).objectStore(STORE_HISTORY).get('latest');
+    r.onsuccess = () => resolve(r.result?.items || []);
+    r.onerror = () => reject(r.error);
+  });
+}
+
+async function fetchRemoteHistory(silent = false){
+  try{
+    const res = await fetch(`${APPS_SCRIPT_URL}?mode=history`, { cache: 'no-store' });
+    if(!res.ok) throw new Error(`HTTP ${res.status}`);
+    const data = await res.json();
+    if(Array.isArray(data.readings)){
+      historyRows = data.readings;
+      await saveHistoryCache(historyRows);
+      await refresh();
+      if(!silent) $('saveStatus').textContent = `Zaktualizowano historię z arkusza (${historyRows.length} wpisów).`;
+    }
+  }catch(err){
+    if(!silent) $('saveStatus').textContent = 'Nie udało się pobrać historii online — używam lokalnego cache.';
+  }
+}
+
+// Zwraca posortowane po dacie historyczne odczyty dla danego (medium, flat)
+// z pominięciem wybranej daty (żeby wyznaczyć poprzedni punkt odniesienia)
+function seriesBeforeDate(medium, flat, currentDate){
+  const merged = new Map();
+  for(const h of historyRows){
+    if(h.medium === medium && String(h.flat) === String(flat) && h.date < currentDate){
+      merged.set(h.date, Number(h.reading));
+    }
+  }
+  return Array.from(merged.entries())
+    .sort((a,b) => a[0].localeCompare(b[0]))
+    .map(([date, reading]) => ({ date, reading }));
+}
+
+function calcTrendBadge(currCons, prevCons){
+  if(currCons == null || prevCons == null || !Number.isFinite(currCons) || !Number.isFinite(prevCons)){
+    return { cls: 'flat', text: 'brak poprz. okresu' };
+  }
+  const diff = +(currCons - prevCons).toFixed(3);
+  if(Math.abs(diff) < 0.0005){
+    return { cls: 'flat', text: '0% bez zmian' };
+  }
+  if(prevCons > 0){
+    const pct = ((diff / prevCons) * 100).toFixed(1).replace('.', ',');
+    const sign = diff > 0 ? '↑ +' : '↓ ';
+    return { cls: diff > 0 ? 'up' : 'down', text: `${sign}${pct}% vs poprz.` };
+  }
+  return { cls: diff > 0 ? 'up' : 'down', text: diff > 0 ? `↑ +${fmtNum(diff)}` : `↓ ${fmtNum(diff)}` };
+}
+
+function updateInputMeta(inp, draftMap){
+  const date = $('date').value;
+  const medium = inp.dataset.medium;
+  const flat = inp.dataset.flat;
+  const metaEl = document.getElementById(`meta-${medium}-${flat}`);
+  if(!metaEl) return;
+
+  const series = seriesBeforeDate(medium, flat, date);
+  const prev1 = series.length >= 1 ? series[series.length - 1] : null;
+  const prev2 = series.length >= 2 ? series[series.length - 2] : null;
+  const prevCons = (prev1 && prev2) ? +(prev1.reading - prev2.reading).toFixed(3) : null;
+
+  const parsedDraft = parseNumber(inp.value);
+  const activeReading = (inp.value.trim() !== '' && parsedDraft !== null)
+    ? parsedDraft
+    : (draftMap?.get(key(date, medium, flat))?.reading ?? null);
+
+  inp.classList.toggle('invalid', inp.value.trim() !== '' && parsedDraft === null);
+
+  if(!prev1){
+    metaEl.innerHTML = `<span>Brak wcześniejszego odczytu</span>`;
+    return;
+  }
+
+  let html = `<span>Poprz.: <b>${fmtNum(prev1.reading, 3)}</b></span>`;
+  if(activeReading !== null){
+    const cons = +(activeReading - prev1.reading).toFixed(3);
+    if(cons < 0){
+      html += `<span class="delta-pill up">mniejszy stan (${fmtNum(cons, 3)})</span>`;
+    }else{
+      html += `<span>Zużycie: <b>${fmtNum(cons, 2)}</b></span>`;
+      if(prevCons !== null){
+        const b = calcTrendBadge(cons, prevCons);
+        html += `<span class="delta-pill ${b.cls}">${b.text}</span>`;
+      }
+    }
+  }
+  metaEl.innerHTML = html;
+}
+
+function renderKPIs(draftMap){
+  const date = $('date').value;
+  const specs = [
+    { medium: 'Prąd', label: 'Prąd razem', unit: 'kWh', flats: FLATS },
+    { medium: 'Zimna woda', label: 'Zimna woda', unit: 'm³', flats: FLATS },
+    { medium: 'Gorąca woda', label: 'Ciepła woda', unit: 'm³', flats: FLATS },
+    { medium: 'Gaz', label: 'Gaz (wspólny)', unit: 'm³', flats: ['wspólny'] }
+  ];
+
+  $('trendKpis').innerHTML = specs.map(sp => {
+    let currTotal = 0, prevTotal = 0, hasCurr = false, hasPrev = false;
+
+    for(const f of sp.flats){
+      const s = seriesBeforeDate(sp.medium, f, date);
+      const r1 = s.length >= 1 ? s[s.length - 1] : null;
+      const r2 = s.length >= 2 ? s[s.length - 2] : null;
+      if(r1 && r2){
+        prevTotal += (r1.reading - r2.reading);
+        hasPrev = true;
+      }
+      const draftVal = draftMap.get(key(date, sp.medium, f))?.reading;
+      const inpEl = document.querySelector(`.reading[data-medium="${sp.medium}"][data-flat="${f}"]`);
+      const liveVal = inpEl && inpEl.value.trim() !== '' ? parseNumber(inpEl.value) : draftVal;
+      if(liveVal != null && r1){
+        currTotal += Math.max(0, liveVal - r1.reading);
+        hasCurr = true;
+      }
+    }
+
+    const displayCons = hasCurr ? currTotal : (hasPrev ? prevTotal : null);
+    const labelMode = hasCurr ? 'bieżący odczyt' : (hasPrev ? 'poprzedni okres' : 'brak danych');
+    const badge = (hasCurr && hasPrev)
+      ? calcTrendBadge(currTotal, prevTotal)
+      : { cls: 'flat', text: hasPrev ? 'ostatni zamknięty' : 'brak porównania' };
+
+    return `
+      <div class="kpi">
+        <div class="kpi-top">
+          <span class="kpi-title">${sp.label}</span>
+          <span class="trend ${badge.cls}">${badge.text}</span>
+        </div>
+        <div class="kpi-val">${displayCons != null ? fmtNum(displayCons, 2) : '—'} <span class="kpi-unit">${displayCons != null ? sp.unit : ''}</span></div>
+        <div class="kpi-sub">${labelMode}${hasPrev ? ` · poprz. ${fmtNum(prevTotal, 2)} ${sp.unit}` : ''}</div>
+      </div>
+    `;
+  }).join('');
+}
+
+function render(){
+  $('electricityRows').innerHTML = FLATS.map(f => `
+    <tr>
+      <td>M${f}</td>
+      <td>
+        <div class="cell-wrap">
+          <input class="reading" type="text" inputmode="decimal" placeholder="—" autocomplete="off" data-medium="Prąd" data-flat="${f}" aria-label="Prąd M${f}">
+          <div class="meta-line" id="meta-Prąd-${f}"></div>
+        </div>
+      </td>
+    </tr>
+  `).join('');
+
+  $('waterRows').innerHTML = FLATS.map(f => `
+    <tr>
+      <td>M${f}</td>
+      <td>
+        <div class="cell-wrap">
+          <input class="reading" type="text" inputmode="decimal" placeholder="—" autocomplete="off" data-medium="Zimna woda" data-flat="${f}" aria-label="Zimna woda M${f}">
+          <div class="meta-line" id="meta-Zimna woda-${f}"></div>
+        </div>
+      </td>
+      <td>
+        <div class="cell-wrap">
+          <input class="reading" type="text" inputmode="decimal" placeholder="—" autocomplete="off" data-medium="Gorąca woda" data-flat="${f}" aria-label="Gorąca woda M${f}">
+          <div class="meta-line" id="meta-Gorąca woda-${f}"></div>
+        </div>
+      </td>
+    </tr>
+  `).join('');
+}
+
+async function refresh(){
+  await saveQueue;
+  const date = $('date').value;
+  const rows = (await allReadings()).filter(r => r.date === date);
+  const map = new Map(rows.map(r => [r.sessionKey, r]));
+
+  document.querySelectorAll('.reading').forEach(inp => {
+    const r = map.get(key(date, inp.dataset.medium, inp.dataset.flat));
+    inp.value = r ? formatReading(r.reading) : '';
+    updateInputMeta(inp, map);
+  });
+
+  $('savedCount').textContent = `${rows.length} zapisanych`;
+  renderKPIs(map);
+}
+
+function saveInput(inp){
+  const date = $('date').value;
+  const medium = inp.dataset.medium;
+  const flat = inp.dataset.flat;
+  const raw = inp.value;
+
+  saveQueue = saveQueue.then(async () => {
+    const k = key(date, medium, flat);
+    const old = await findKey(k);
+    const v = raw.trim();
+    const rowsBefore = (await allReadings()).filter(r => r.date === date);
+    const map = new Map(rowsBefore.map(r => [r.sessionKey, r]));
+
+    if(!v){
+      if(old) await removeReading(old.id);
+      map.delete(k);
+    }else{
+      const n = parseNumber(v);
+      if(n === null){
+        updateInputMeta(inp, map);
+        $('saveStatus').textContent = 'Nieprawidłowy format. Użyj maksymalnie 3 miejsc po przecinku.';
+        return;
+      }
+      const rec = { id: old?.id, sessionKey: k, date, medium, flat, reading: n, note: old?.note || '', createdAt: old?.createdAt || new Date().toISOString() };
+      await putReading(rec);
+      map.set(k, rec);
+    }
+
+    updateInputMeta(inp, map);
+    renderKPIs(map);
+    const rowsAfter = (await allReadings()).filter(r => r.date === date);
+    $('savedCount').textContent = `${rowsAfter.length} zapisanych`;
+    $('saveStatus').textContent = 'Zapisano automatycznie na tym urządzeniu.';
+  }).catch(err => {
+    $('saveStatus').textContent = 'Błąd zapisu: ' + err.message;
+  });
+}
+
+function sorted(rows){
+  return rows.sort((a,b) =>
+    MEDIA_ORDER.indexOf(a.medium) - MEDIA_ORDER.indexOf(b.medium) ||
+    String(a.flat).localeCompare(String(b.flat), 'pl', { numeric: true })
+  );
+}
+function csvFor(rows){
+  const q = v => '"' + String(v ?? '').replace(/"/g, '""') + '"';
+  return [
+    ['Medium','Mieszkanie','Data','Odczyt','Notatka'],
+    ...sorted(rows).map(r => [r.medium, displayFlat(r.flat), formatDate(r.date), String(r.reading).replace('.', ','), r.note || ''])
+  ].map(row => row.map(q).join(',')).join('\r\n');
+}
+
+async function exportCSV(){
+  await saveQueue;
+  const date = $('date').value;
+  const rows = (await allReadings()).filter(r => r.date === date);
+  if(!rows.length){ alert('Brak odczytów dla wybranej daty.'); return; }
+  const blob = new Blob(['\ufeff' + csvFor(rows)], { type: 'text/csv;charset=utf-8' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = `liczniki_${date}.csv`;
+  a.click();
+  URL.revokeObjectURL(url);
+}
+
+async function send(){
+  await saveQueue;
+  const date = $('date').value;
+  const rows = sorted((await allReadings()).filter(r => r.date === date));
+  if(!rows.length){ alert('Brak odczytów dla wybranej daty.'); return; }
+  if(rows.some(r => !Number.isFinite(r.reading))){ alert('W danych jest nieprawidłowy odczyt.'); return; }
+  if(!confirm(`Wysłać ${rows.length} odczytów z dnia ${formatDate(date)} do arkusza?`)) return;
+
+  const btn = $('sendBtn');
+  btn.disabled = true;
+  btn.textContent = 'Wysyłanie…';
+  const csv = csvFor(rows);
+
+  try{
+    const response = await fetch(APPS_SCRIPT_URL, {
+      method: 'POST',
+      headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+      body: csv
+    });
+    const message = await response.text();
+    if(!response.ok || !message.startsWith('OK')) throw new Error(message || `HTTP ${response.status}`);
+
+    // Dorzuć wysłane odczyty do lokalnej historii, żeby od razu działały jako punkt odniesienia
+    const existingKeys = new Set(historyRows.map(h => `${h.date}|${h.medium}|${h.flat}`));
+    for(const r of rows){
+      const k = `${r.date}|${r.medium}|${r.flat}`;
+      if(!existingKeys.has(k)) historyRows.push({ date: r.date, medium: r.medium, flat: String(r.flat), reading: r.reading });
+      else historyRows = historyRows.map(h => (`${h.date}|${h.medium}|${h.flat}` === k ? { ...h, reading: r.reading } : h));
+      await removeReading(r.id);
+    }
+    await saveHistoryCache(historyRows);
+    await refresh();
+    alert(message);
+  }catch(err){
+    alert('Nie potwierdzono poprawnej wysyłki. Dane pozostają zapisane na urządzeniu.\n\n' + err.message);
+  }finally{
+    btn.disabled = false;
+    btn.textContent = 'Wyślij odczyty do arkusza';
+  }
+}
+
+document.addEventListener('input', e => { if(e.target.matches('.reading')) saveInput(e.target); });
+$('date').addEventListener('change', refresh);
+$('sendBtn').addEventListener('click', send);
+$('exportBtn').addEventListener('click', exportCSV);
+$('syncHistoryBtn').addEventListener('click', () => fetchRemoteHistory(false));
+$('clearDateBtn').addEventListener('click', async () => {
+  const d = $('date').value;
+  if(!confirm(`Usunąć lokalne odczyty z dnia ${formatDate(d)}?`)) return;
+  await saveQueue;
+  await clearDate(d);
+  await refresh();
+});
+
+(async () => {
+  render();
+  $('date').value = todayISO();
+  await openDB();
+  historyRows = await loadHistoryCache();
+  await refresh();
+  fetchRemoteHistory(true);
+})().catch(e => alert('Nie udało się uruchomić aplikacji: ' + e.message));
+
+if('serviceWorker' in navigator) navigator.serviceWorker.register('./sw.js').catch(console.warn);
 </script>
-</body></html>
+</body>
+</html>
