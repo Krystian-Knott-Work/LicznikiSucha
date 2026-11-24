@@ -332,6 +332,19 @@ function formatDate(iso){
   const [y,m,d] = (iso || '').split('-');
   return (y && m && d) ? `${d}.${m}.${y}` : iso;
 }
+function normFlat(f){
+  const s = String(f ?? '').trim();
+  if(/^m\d+$/i.test(s)) return s.slice(1);
+  if(s.toLowerCase() === 'wspólny licznik') return 'wspólny';
+  return s;
+}
+function normDateISO(d){
+  const s = String(d ?? '').trim();
+  if(/^\d{4}-\d{2}-\d{2}$/.test(s)) return s;
+  const m = s.match(/^(\d{1,2})[./-](\d{1,2})[./-](\d{4})$/);
+  if(m) return `${m[3]}-${m[2].padStart(2,'0')}-${m[1].padStart(2,'0')}`;
+  return s;
+}
 function parseNumber(v){
   if(v === '' || v == null) return null;
   const s = String(v).trim().replace(',', '.');
@@ -431,26 +444,49 @@ async function fetchRemoteHistory(silent = false){
     if(!res.ok) throw new Error(`HTTP ${res.status}`);
     const data = await res.json();
     if(Array.isArray(data.readings)){
-      historyRows = data.readings;
+      historyRows = data.readings.map(h => ({
+        medium: String(h.medium ?? '').trim(),
+        flat: normFlat(h.flat),
+        date: normDateISO(h.date),
+        reading: Number(h.reading)
+      })).filter(h => h.medium && h.flat && /^\d{4}-\d{2}-\d{2}$/.test(h.date) && Number.isFinite(h.reading));
+
       await saveHistoryCache(historyRows);
       await refresh();
-      if(!silent) $('saveStatus').textContent = `Zaktualizowano historię z arkusza (${historyRows.length} wpisów).`;
+      $('saveStatus').textContent = `Historia: ${historyRows.length} wpisów z arkusza.`;
+    }else{
+      $('saveStatus').textContent = 'Odpowiedź historii nie zawiera tablicy readings (sprawdź wdrożenie Apps Script).';
     }
   }catch(err){
-    if(!silent) $('saveStatus').textContent = 'Nie udało się pobrać historii online — używam lokalnego cache.';
+    $('saveStatus').textContent = `Brak historii z arkusza (${err.message}) — używam cache (${historyRows.length} wpisów).`;
   }
 }
 
 function seriesBeforeDate(medium, flat, currentDate){
+  const targetFlat = normFlat(flat);
+  const targetDate = normDateISO(currentDate);
   const merged = new Map();
   for(const h of historyRows){
-    if(h.medium === medium && String(h.flat) === String(flat) && h.date < currentDate){
-      merged.set(h.date, Number(h.reading));
+    const hDate = normDateISO(h.date);
+    if(h.medium === medium && normFlat(h.flat) === targetFlat && hDate < targetDate){
+      merged.set(hDate, Number(h.reading));
     }
   }
   return Array.from(merged.entries())
     .sort((a,b) => a[0].localeCompare(b[0]))
     .map(([date, reading]) => ({ date, reading }));
+}
+
+function sameDateHistoryReading(medium, flat, currentDate){
+  const targetFlat = normFlat(flat);
+  const targetDate = normDateISO(currentDate);
+  for(let i = historyRows.length - 1; i >= 0; i--){
+    const h = historyRows[i];
+    if(h.medium === medium && normFlat(h.flat) === targetFlat && normDateISO(h.date) === targetDate){
+      return Number(h.reading);
+    }
+  }
+  return null;
 }
 
 function calcTrendBadge(currCons, prevCons){
@@ -489,11 +525,16 @@ function updateInputMeta(inp, draftMap){
   inp.classList.toggle('invalid', inp.value.trim() !== '' && parsedDraft === null);
 
   if(!prev1){
-    metaEl.innerHTML = `<span>Brak wcześniejszego odczytu</span>`;
+    const sameDay = sameDateHistoryReading(medium, flat, date);
+    if(sameDay !== null){
+      metaEl.innerHTML = `<span>W arkuszu na ten dzień: <b>${fmtNum(sameDay, 3)}</b></span>`;
+    }else{
+      metaEl.innerHTML = `<span>Brak wcześniejszego odczytu przed ${formatDate(date)}</span>`;
+    }
     return;
   }
 
-  let html = `<span>Poprz.: <b>${fmtNum(prev1.reading, 3)}</b></span>`;
+  let html = `<span>Poprz. (${formatDate(prev1.date)}): <b>${fmtNum(prev1.reading, 3)}</b></span>`;
   if(activeReading !== null){
     const cons = +(activeReading - prev1.reading).toFixed(3);
     if(cons < 0){
@@ -503,6 +544,8 @@ function updateInputMeta(inp, draftMap){
       if(prevCons !== null){
         const b = calcTrendBadge(cons, prevCons);
         html += `<span class="delta-pill ${b.cls}">${b.text}</span>`;
+      }else{
+        html += `<span class="delta-pill flat">1. zużycie w bazie</span>`;
       }
     }
   }
@@ -539,7 +582,7 @@ function renderKPIs(draftMap){
     }
 
     const displayCons = hasCurr ? currTotal : (hasPrev ? prevTotal : null);
-    const labelMode = hasCurr ? 'bieżący szkic' : (hasPrev ? 'poprzedni okres' : 'brak danych');
+    const labelMode = hasCurr ? 'bieżący szkic' : (hasPrev ? 'poprzedni okres' : 'brak 2 wcześniejszych odczytów');
     const badge = (hasCurr && hasPrev)
       ? calcTrendBadge(currTotal, prevTotal)
       : { cls: 'flat', text: hasPrev ? 'ostatni zamknięty' : 'brak porównania' };
@@ -721,7 +764,7 @@ async function send(){
     const existingKeys = new Set(historyRows.map(h => `${h.date}|${h.medium}|${h.flat}`));
     for(const r of rows){
       const k = `${r.date}|${r.medium}|${r.flat}`;
-      if(!existingKeys.has(k)) historyRows.push({ date: r.date, medium: r.medium, flat: String(r.flat), reading: r.reading });
+      if(!existingKeys.has(k)) historyRows.push({ date: r.date, medium: r.medium, flat: normFlat(r.flat), reading: r.reading });
       else historyRows = historyRows.map(h => (`${h.date}|${h.medium}|${h.flat}` === k ? { ...h, reading: r.reading } : h));
       await removeReading(r.id);
     }
