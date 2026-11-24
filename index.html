@@ -35,10 +35,23 @@
   .progress-bar > div { height: 100%; background: #007aff; transition: width 0.3s; }
   .step-counter { font-size: 12px; color: #8e8e93; text-transform: uppercase;
                   letter-spacing: 0.5px; margin-bottom: 4px; }
-  .step-name { font-size: 26px; font-weight: 700; margin-bottom: 16px; }
-  .reading-input { font-size: 32px !important; text-align: center;
-                   font-weight: 600; padding: 20px !important; }
-  .row-buttons { display: flex; gap: 8px; margin-top: 8px; }
+  .step-name { font-size: 26px; font-weight: 700; margin-bottom: 14px; }
+
+  /* Siatka odczytów: etykieta mieszkania + 1 lub 2 inputy w wierszu */
+  .meter-row { display: grid; grid-template-columns: 48px repeat(var(--cols, 1), 1fr);
+               gap: 10px; align-items: center; margin-bottom: 10px; }
+  .meter-row.head { margin-bottom: 6px; }
+  .meter-row.head span { font-size: 12px; color: #8e8e93; text-transform: uppercase;
+                         letter-spacing: 0.5px; text-align: center; }
+  .flat-label { font-size: 18px; font-weight: 700; }
+  input.reading-input { font-size: 22px; font-weight: 600; text-align: center;
+                        padding: 12px 6px; margin-bottom: 0; }
+  input.reading-input:focus { outline: 2px solid #007aff; outline-offset: -1px; border-color: transparent; }
+  .meter-row .span-all { grid-column: 2 / -1; }
+  .extra-sep { border-top: 1px solid #f2f2f7; margin: 14px 0 12px; padding-top: 12px; }
+  .extra-sep .hint { margin: 0 0 8px; }
+
+  .row-buttons { display: flex; gap: 8px; margin-top: 14px; }
   .row-buttons > button { flex: 1; margin-bottom: 0; }
   .summary-group { margin-bottom: 20px; }
   .summary-group h3 { font-size: 15px; margin: 0 0 8px; color: #666; }
@@ -66,24 +79,19 @@
   <input type="date" id="date">
   <button id="startBtn">Rozpocznij odczyty</button>
   <button id="directSendBtn" class="secondary">Przejdź od razu do podsumowania</button>
-  <div class="hint">Kolejno: Prąd M1–M5 → Zimna woda M1–M5 → Gorąca woda M1–M5 → Gaz</div>
+  <div class="hint">Ekran 1: Prąd M1–M5 → Ekran 2: Woda zimna i gorąca M1–M5 + Gaz</div>
 </div>
 
-<!-- Kreator -->
+<!-- Ekrany odczytów (1: prąd, 2: woda i gaz) -->
 <div id="wizardScreen" class="card" style="display:none">
   <div class="progress-bar"><div id="progressFill" style="width:0%"></div></div>
   <div class="step-counter" id="stepCounter"></div>
   <div class="step-name" id="stepName"></div>
 
-  <label for="reading">Odczyt</label>
-  <input type="number" id="reading" class="reading-input" inputmode="decimal" step="0.01" placeholder="—">
-
-  <label for="note">Notatka (opcjonalnie)</label>
-  <input type="text" id="note" placeholder="">
+  <div id="pageBody"></div>
 
   <div class="row-buttons">
     <button id="backBtn" class="secondary">← Wstecz</button>
-    <button id="skipBtn" class="secondary">Pomiń</button>
     <button id="nextBtn">Dalej →</button>
   </div>
   <button id="finishBtn" class="success" style="margin-top:12px">Zakończ i pokaż podsumowanie</button>
@@ -107,23 +115,48 @@
 <script>
 const APPS_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbzi2Jw5W_4rXo-QTBV5f7PSMbw5dPeez5dxBbF7hiJiBXJ_Eihu_zqcpPopWxfw3517/exec';
 
-const MEDIA = [
-  { name: 'Prąd',        flats: ['1','2','3','4','5'] },
-  { name: 'Zimna woda',  flats: ['1','2','3','4','5'] },
-  { name: 'Gorąca woda', flats: ['1','2','3','4','5'] },
-  { name: 'Gaz',         flats: ['wspólny'] }
-];
+const FLATS = ['1', '2', '3', '4', '5'];
 
-const STEPS = [];
-MEDIA.forEach(m => m.flats.forEach(f => STEPS.push({ medium: m.name, flat: f })));
+// Kolejność mediów (używana do sortowania w podsumowaniu i wysyłce)
+const MEDIA_ORDER = ['Prąd', 'Zimna woda', 'Gorąca woda', 'Gaz'];
+
+// Definicja ekranów
+const PAGES = [
+  {
+    title: 'Prąd',
+    cols: ['Prąd'],
+    rows: FLATS.map(f => ({
+      label: 'M' + f,
+      fields: [{ medium: 'Prąd', flat: f }]
+    })),
+    extra: null
+  },
+  {
+    title: 'Woda i gaz',
+    cols: ['Zimna woda', 'Gorąca woda'],
+    rows: FLATS.map(f => ({
+      label: 'M' + f,
+      fields: [
+        { medium: 'Zimna woda',  flat: f },
+        { medium: 'Gorąca woda', flat: f }
+      ]
+    })),
+    extra: {
+      label: 'Gaz',
+      hint: 'Gaz — wspólny licznik',
+      field: { medium: 'Gaz', flat: 'wspólny' }
+    }
+  }
+];
 
 const DB_NAME = 'licznikiDB2';
 const DB_VERSION = 1;
 const STORE = 'readings';
 
 let db;
-let currentStep = 0;
+let currentPage = 0;
 let sessionDate = '';
+let saveQueue = Promise.resolve();   // zapisy idą po kolei, żeby nie dublować rekordów
 
 const $ = id => document.getElementById(id);
 
@@ -211,10 +244,14 @@ function displayFlat(flat) {
 }
 
 function sortReadings(a, b) {
-  const ma = MEDIA.findIndex(m => m.name === a.medium);
-  const mb = MEDIA.findIndex(m => m.name === b.medium);
+  const ma = MEDIA_ORDER.indexOf(a.medium);
+  const mb = MEDIA_ORDER.indexOf(b.medium);
   if (ma !== mb) return ma - mb;
   return String(a.flat).localeCompare(String(b.flat), 'pl', { numeric: true });
+}
+
+function fieldKey(f) {
+  return `${sessionDate}|${f.medium}|${f.flat}`;
 }
 
 // ---------- Pasek wysyłki ----------
@@ -238,9 +275,8 @@ async function globalSend() {
     alert('Brak URL Apps Script.'); return;
   }
 
-  if ($('wizardScreen').style.display === 'block') {
-    await saveCurrentOnly();
-  }
+  // Poczekaj aż wszystkie wpisane wartości trafią do bazy
+  await saveQueue;
 
   const readings = await getAllReadings();
   if (readings.length === 0) { alert('Brak danych do wysłania.'); return; }
@@ -289,72 +325,104 @@ async function globalSend() {
   }
 }
 
-// ---------- Kreator ----------
+// ---------- Ekrany odczytów ----------
 
-async function showStep(index) {
+function inputHTML(f, extraClass) {
+  return `<input type="number" class="reading-input ${extraClass || ''}" inputmode="decimal" step="0.01" placeholder="—"
+            data-medium="${f.medium}" data-flat="${f.flat}" aria-label="${f.medium} ${displayFlat(f.flat)}">`;
+}
+
+function renderPage(page) {
+  const cols = page.cols.length;
+  let html = `<div class="meter-row head" style="--cols:${cols}"><span></span>` +
+             page.cols.map(c => `<span>${c}</span>`).join('') + `</div>`;
+
+  html += page.rows.map(r => `
+    <div class="meter-row" style="--cols:${cols}">
+      <div class="flat-label">${r.label}</div>
+      ${r.fields.map(f => inputHTML(f)).join('')}
+    </div>`).join('');
+
+  if (page.extra) {
+    html += `
+    <div class="extra-sep">
+      <div class="hint">${page.extra.hint}</div>
+      <div class="meter-row" style="--cols:${cols}; margin-bottom:0">
+        <div class="flat-label">${page.extra.label}</div>
+        ${inputHTML(page.extra.field, 'span-all')}
+      </div>
+    </div>`;
+  }
+
+  $('pageBody').innerHTML = html;
+}
+
+async function showPage(index) {
   if (index < 0) index = 0;
-  if (index >= STEPS.length) { await finishWizard(); return; }
+  if (index >= PAGES.length) index = PAGES.length - 1;
+  currentPage = index;
+  const page = PAGES[index];
 
-  currentStep = index;
-  const step = STEPS[index];
+  renderPage(page);
 
-  const allReadings = await getAllReadings();
-  $('stepCounter').textContent = `Krok ${index + 1} z ${STEPS.length} · wypełniono ${allReadings.length}`;
-  $('stepName').textContent = `${step.medium} — ${displayFlat(step.flat)}`;
-  $('progressFill').style.width = ((index) / STEPS.length * 100) + '%';
+  // Wczytaj już zapisane wartości dla tej daty
+  const all = await getAllReadings();
+  const bySession = {};
+  all.forEach(r => { bySession[r.sessionKey] = r; });
 
-  const key = `${sessionDate}|${step.medium}|${step.flat}`;
-  const existing = await findBySessionKey(key);
+  $('pageBody').querySelectorAll('input.reading-input').forEach(inp => {
+    const f = { medium: inp.dataset.medium, flat: inp.dataset.flat };
+    const existing = bySession[fieldKey(f)];
+    inp.value = existing && existing.reading != null ? existing.reading : '';
+  });
 
-  $('reading').value = existing && existing.reading != null ? existing.reading : '';
-  $('note').value = existing && existing.note ? existing.note : '';
+  $('stepCounter').textContent = `Ekran ${index + 1} z ${PAGES.length} · wypełniono ${all.length}`;
+  $('stepName').textContent = page.title;
+  $('progressFill').style.width = (index / PAGES.length * 100) + '%';
 
-  $('backBtn').disabled = index === 0;
+  const last = index === PAGES.length - 1;
+  $('backBtn').style.display = index === 0 ? 'none' : '';
+  $('nextBtn').style.display = last ? 'none' : '';
+  $('finishBtn').style.display = last ? '' : 'none';
 
   $('setupScreen').style.display = 'none';
   $('summaryScreen').style.display = 'none';
   $('wizardScreen').style.display = 'block';
-
-  $('reading').focus();
-  $('reading').select();
+  window.scrollTo(0, 0);
 }
 
-async function saveCurrentOnly() {
-  const step = STEPS[currentStep];
-  const key = `${sessionDate}|${step.medium}|${step.flat}`;
-  const existing = await findBySessionKey(key);
-  const raw = $('reading').value.trim();
-  const noteVal = $('note').value.trim();
+// Zapis pojedynczego pola (wywoływany przy każdej zmianie, szeregowo)
+function saveField(f, raw) {
+  const task = async () => {
+    const key = fieldKey(f);
+    const existing = await findBySessionKey(key);
+    const value = raw.trim();
 
-  if (raw === '') {
-    if (existing) await deleteReading(existing.id);
-  } else {
-    const reading = parseNumber(raw);
-    if (reading == null) return;
-    await putReading({
-      id: existing ? existing.id : undefined,
-      sessionKey: key,
-      date: sessionDate,
-      medium: step.medium,
-      flat: step.flat,
-      reading,
-      note: noteVal,
-      createdAt: new Date().toISOString()
-    });
-  }
-  await updateGlobalSendLabel();
-}
-
-async function saveCurrentAndAdvance(skip) {
-  if (!skip) await saveCurrentOnly();
-  if (currentStep < STEPS.length - 1) {
-    await showStep(currentStep + 1);
-  } else {
-    await finishWizard();
-  }
+    if (value === '') {
+      if (existing) await deleteReading(existing.id);
+    } else {
+      const reading = parseNumber(value);
+      if (reading == null) return;
+      await putReading({
+        id: existing ? existing.id : undefined,
+        sessionKey: key,
+        date: sessionDate,
+        medium: f.medium,
+        flat: f.flat,
+        reading,
+        note: existing && existing.note ? existing.note : '',
+        createdAt: existing ? existing.createdAt : new Date().toISOString()
+      });
+    }
+    await updateGlobalSendLabel();
+  };
+  saveQueue = saveQueue.then(task).catch(err => console.warn('Błąd zapisu:', err));
+  return saveQueue;
 }
 
 async function finishWizard() {
+  await saveQueue;
+
   $('wizardScreen').style.display = 'none';
   $('setupScreen').style.display = 'none';
   $('summaryScreen').style.display = 'block';
@@ -391,7 +459,7 @@ async function finishWizard() {
 $('startBtn').addEventListener('click', async () => {
   sessionDate = $('date').value;
   if (!sessionDate) { alert('Wybierz datę.'); return; }
-  await showStep(0);
+  await showPage(0);
 });
 
 $('directSendBtn').addEventListener('click', async () => {
@@ -400,27 +468,40 @@ $('directSendBtn').addEventListener('click', async () => {
   await finishWizard();
 });
 
-$('nextBtn').addEventListener('click', () => saveCurrentAndAdvance(false));
-$('skipBtn').addEventListener('click', async () => {
-  $('reading').value = '';
-  $('note').value = '';
-  await saveCurrentAndAdvance(true);
-});
-$('backBtn').addEventListener('click', () => showStep(currentStep - 1));
-
-$('finishBtn').addEventListener('click', async () => {
-  await saveCurrentOnly();
-  await finishWizard();
+$('nextBtn').addEventListener('click', async () => {
+  await saveQueue;
+  await showPage(currentPage + 1);
 });
 
-$('reading').addEventListener('keydown', (e) => {
-  if (e.key === 'Enter') { e.preventDefault(); saveCurrentAndAdvance(false); }
+$('backBtn').addEventListener('click', async () => {
+  await saveQueue;
+  await showPage(currentPage - 1);
 });
 
-$('editBtn').addEventListener('click', () => showStep(0));
+$('finishBtn').addEventListener('click', finishWizard);
+
+// Zapis przy każdej zmianie w polu
+$('pageBody').addEventListener('input', (e) => {
+  const inp = e.target;
+  if (!inp.classList.contains('reading-input')) return;
+  saveField({ medium: inp.dataset.medium, flat: inp.dataset.flat }, inp.value);
+});
+
+// Enter = następne pole
+$('pageBody').addEventListener('keydown', (e) => {
+  if (e.key !== 'Enter' || !e.target.classList.contains('reading-input')) return;
+  e.preventDefault();
+  const inputs = Array.from($('pageBody').querySelectorAll('input.reading-input'));
+  const i = inputs.indexOf(e.target);
+  if (i >= 0 && i < inputs.length - 1) inputs[i + 1].focus();
+  else e.target.blur();
+});
+
+$('editBtn').addEventListener('click', () => showPage(0));
 
 $('newSessionBtn').addEventListener('click', async () => {
   if (!confirm('Wyczyścić wszystkie zapisane odczyty z telefonu? (Niewysłane dane przepadną.)')) return;
+  await saveQueue;
   await clearAll();
   await updateGlobalSendLabel();
   showSetupScreen();
@@ -442,7 +523,7 @@ $('exportBtn').addEventListener('click', async () => {
     r.note ? '"' + r.note.replace(/"/g, '""') + '"' : ''
   ]);
   const csv = [header.join(','), ...rows.map(r => r.join(','))].join('\r\n');
-  const blob = new Blob(['\ufeff' + csv], { type: 'text/csv;charset=utf-8;' });
+  const blob = new Blob(['﻿' + csv], { type: 'text/csv;charset=utf-8;' });
   const url = URL.createObjectURL(blob);
   const a = document.createElement('a');
   a.href = url;
