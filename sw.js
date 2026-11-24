@@ -1,5 +1,5 @@
 
-const CACHE_NAME = 'liczniki-v9';
+const CACHE_NAME = 'liczniki-v10';
 const ASSETS = [
   './index.html',
   './manifest.json',

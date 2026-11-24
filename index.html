@@ -329,7 +329,7 @@ async function globalSend() {
 // ---------- Ekrany odczytów ----------
 
 function inputHTML(f, extraClass) {
-  return `<input type="number" class="reading-input ${extraClass || ''}" inputmode="decimal" step="0.01" placeholder="—"
+  return `<input type="number" class="reading-input ${extraClass || ''}" inputmode="decimal" step="any" placeholder="—"
             data-medium="${f.medium}" data-flat="${f.flat}" aria-label="${f.medium} ${displayFlat(f.flat)}">`;
 }
 
